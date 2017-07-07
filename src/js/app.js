@@ -1,34 +1,10 @@
 angular.module("mercatorApp",['plotly'])
     .factory('plotData',function($http,$q,$log) {
-
-	function unpack(rows,key) {
-	    return rows.map(function(row) { return row[key]; });
-	}
-
-	// function processData(text) {
-
-	//     var textLines = text['data'].split(/\r\n|\n/);
-	//     var headers = textLines[0].split(',');
-	//     var deffered = $q.defer();
-
-	//     lines = [];
-
-	//     for(var i=1; i < textLines.length; i++){
-	// 	var line = {}
-	// 	var splitLine = textLines[i].split(',');
-	// 	for(var j=0; j < headers.length; j++){
-	// 	    line[headers[j]]=splitLine[j];
-	// 	}
-	// 	lines.push(line);
-	//     }
-	    
-	//     return deffered.promise;
-	// }
-
+	// csv parser
 	function CSVtoArray(text) {
 	    var re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
 	    var re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-	    // Return NULL if input string is not well formed CSV string.
+	    // return NULL if input string is not well formed CSV string.
 	    if (!re_valid.test(text)) return null;
 	    var a = [];                     // Initialize array to receive values.
 	    text.replace(re_value, // "Walk" the string using replace with callback.
@@ -47,43 +23,57 @@ angular.module("mercatorApp",['plotly'])
 
 
 	var factory = {
+	    // return column key from data matrix rows 
 	    unpack: function(rows,key) {
 		return rows.map(function(row) { return row[key]; });
 	    },
+	    // return promise of tsne data
 	    getData: function() {
 		return $http.get('/data/tsne_dat.csv');
 	    },
+	    // parse csv data file for tsne
+	    // input:
+	    //      text: text of csv file
+	    // return:
+	    //      promise of resolve lines array
 	    processData: function(text) {
-
 		var textLines = text['data'].split(/\r\n|\n/);
-		// var headers = textLines[0].split(',');
 		var headers = CSVtoArray(textLines[0]);
 		var deferred = $q.defer();
 
 		var lines = [];
-
+		// populate array lines with hashes for rows of csv file
+		// length-1 because splitting on new line adds an empty line to the end of the file
 		for(var i=1; i < (textLines.length-1); i++){
 		    var line = {};
 		    var splitLine = CSVtoArray(textLines[i]);
-		    // var splitLine = textLines[i].split(',');
 		    if(splitLine.length != headers.length){
 			$log.error('Header length',headers.length);
 			$log.error('Line Length',splitLine.length);
 			$log.error('Line number:',i);
 			deferred.reject('header and line different lengths');
 		    }
+		    // populate line with attributes from header and values from splitLine
 		    for(var j=0; j < headers.length; j++){
 			line[headers[j]]=splitLine[j];
 		    }
 		    lines.push(line);
+		    // resolve on last loop iteration
 		    if(i === (textLines.length-2) && j === (headers.length)){
 			deferred.resolve(lines);
 		    }
 		}
 		return deferred.promise;
 	    },
+	    // Build trace array from data array and tracefields
+	    // input:
+	    //   data: array of data hashes corresponding to rows of input csv
+	    //   traceFields: array of strings corresponding to fields in csv header
+	    // return:
+	    //   promise with resolve trace array
 	    buildTraces: function(data,traceFields) {
 		var deferred = $q.defer();
+		// if no trace fields, return single trace
 		if(traceFields.length === 0){
 		    deferred.resolve([{
 			mode: 'markers',
@@ -94,9 +84,8 @@ angular.module("mercatorApp",['plotly'])
 		    }]);
 		}
 		else{
-		    // Can create list of all combinations by looping, then make set OR
-		    // Can loop through and all entries as need be, creating
 		    traces = [];
+		    // return single string traceName that defines name of trace for a given entry line and fields traceFields
 		    function createTraceName(line,traceFields) {
 			var fields=traceFields.map(function(entry) {return line[entry];});
 			var traceName = "";
@@ -104,6 +93,7 @@ angular.module("mercatorApp",['plotly'])
 			return traceName;
 		    }
 		    var traceNames=new Set();
+		    // create array of promises of traceNames (might be overkill?)
 		    let nameProcessing = data.map(line => {
 		    	return $q((resolve,reject) => {
 		    	    traceName = createTraceName(line,traceFields);
@@ -116,7 +106,8 @@ angular.module("mercatorApp",['plotly'])
 		    $q.all(nameProcessing)
 			.then(() => {
 			    let traceProcessing = [];
-			    traceNames.forEach(traceName => {
+			    // return array of promises of resolve trace
+			    traceNames.forEach((traceName) => {
 				traceProcessing.push($q((resolve,reject) => {
 				    trace = {
 					mode: 'markers',
@@ -138,9 +129,9 @@ angular.module("mercatorApp",['plotly'])
 	};
 	return factory; 
     })
+    // Controller for plotly plot
     .controller('plotController', function($scope, $timeout, $log, plotData){
-
-	// $scope.traces = plotData.traces;
+	// Initialization function
 	function init() {
 	    plotData.getData()
 		.then(plotData.processData)
@@ -158,8 +149,9 @@ angular.module("mercatorApp",['plotly'])
 		    $scope.buildTraces=plotData.buildTraces;
 		    $scope.options = {showLink:false};
 		    $scope.numberOfSelectedPoints = 0;
-		    $scope.plotlyEvents = function (graph){
-			graph.on('plotly_selected',function(event){
+		    // function for defining listeners for events emitted by plotly.js
+		    $scope.plotlyEvents = (graph) => {
+			graph.on('plotly_selected', (event) => {
 			    if(event) {
 				// $timeout(function() {
 				//     $scope.numberOfSelectedPoints = event.points.length;
@@ -176,12 +168,13 @@ angular.module("mercatorApp",['plotly'])
 	};
 	init();
     })
+    // Selectize menu for coloring plot
     .directive('colorSelect', function() {
 	return{
 	    restrict: 'E',
 	    template: '<select></select>',
 	    replace: true,
-	    controller: ['$scope',($scope) => {
+	    controller: ['$scope', ($scope) => {
 		var $select = $('#select-groups').selectize({
 		    maxItems: null,
 		    valueField: 'id',
@@ -199,6 +192,7 @@ angular.module("mercatorApp",['plotly'])
 	    }]
 	};
     })
+    // Button that allows coloring
     .directive('colorButton', ['plotData' , function(plotData) {
     	return{
     	    restrict: 'E',
@@ -215,112 +209,4 @@ angular.module("mercatorApp",['plotly'])
     	};
     }]);
 	    
-
-
-    // function readDat() {
-    // 	Plotly.d3.csv('data/tsne_dat.csv',function(err,rows){
-	    
-    // 	    for (i=0; i < rows.length; i++){
-    // 		rows[i]['y1'] = Number(rows[i]['y1']);
-    // 		rows[i]['y2'] = Number(rows[i]['y2']);
-    // 	    }
-
-    // 	    $scope.data = rows;
-    // 	});
-    // }
-
-    // function buildTraces(trace_fields) {
-
-    // 	$scope.traces = {
-    // 	    mode: 'markers',
-    // 	    name: 'test',
-    // 	    x: unpack($scope.data,'y1').map(function(x) { return Number(x); }),
-    // 	    y: unpack($scope.data,'y2').map(function(x) { return Number(x); }),
-    // 	    type: 'scattergl'
-    // 	};
-
-    // };
-
-    // function unpack(rows,key) {
-    // 	return rows.map(function(row) { return row[key]; });
-    // };
-
-    // var init = function() {
-
-    // 	readDat();
-
-    // 	buildTraces([]);
-
-    // }
-
-    // $scope.data = readDat();
-
-    // $scope.buildTraces = function(trace_fields) {
-
-    // 	// TODO write code here to build more complex traces, for now will just handle a traces.length === 0 case
-	
-    // 	return {
-    // 	    mode: 'markers',
-    // 	    name: 'test',
-    // 	    x: unpack(rows,'y1').map(function(x) { return Number(x); }),
-    // 	    y: unpack(rows,'y2').map(function(x) { return Number(x); }),
-    // 	    type: 'scattergl'
-    // 	};
-
-    // };
-
-    // $scope.buildTraces = buildTraces();
-
-
-// module.factory('tsnePlot',['$rootscope', function($rootscope){
-    
-//     function readDat() {
-	
-// 	Plotly.d3.csv('data/tsne_dat.csv',function(err,rows){
-
-// 	    for (i=0 i < rows.length; i++){
-// 		rows[i]['y1'] = Number(rows[i]['y1']);
-// 		rows[i]['y2'] = Number(rows[i]['y2']);
-// 	    }
-
-// 	    return rows;
-// 	});
-//     };
-
-//     function buildTraces(fields){
-// 	// put code for building traces from a set of fields here
-//     }
-		     
-//     data = readDat();
-
-//     var factory = {
-	
-// 	tsneArray: data,
-	
-// 	getTraces: function (rows) {
-
-
-// 	}
-
-//     }
-
-//     return factory;
-		    // for(i = 0, i < data.length; i++){
-		    // 	line = data[i];
-		    // 	traceName = createTraceName(line,trace_fields);
-		    // 	line['traceName'] = traceName;
-		    // 	traceNames.add(traceName);
-		    // }
-
-		    
-		    // traceNames.forEach(function(traceName) {
-		    // 	trace = {
-		    // 	    mode: 'markers',
-		    // 	    name: traceName,
-		    // 	    type: 'scattergl'
-		    // 	    x: factory.unpack(data.filter(function(line) line['traceName'] === traceName),'y1').map(function(x) { return Number(x); }),
-		    // 	    y: factory.unpack(data.filter(function(line) line['traceName'] === traceName),'y2').map(function(x) { return Number(x); })
-		    // 	};
-		    // 	traces.push(trace);
-		    // })
 
