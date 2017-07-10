@@ -15,7 +15,7 @@ app.use(bodyParser.json({limit: '500kb'}));
 app.use(bodyParser.text({limit: '500kb'}));
 app.use(bodyParser.raw({limit: '500kb'}));
 
-app.use('/src');
+app.use(express.static('public'));
 
 // app.get('/',function (req, res) {
 
