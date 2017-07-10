@@ -1,8 +1,8 @@
 <html ng-app="mercatorApp">
   <head>
+    <script src="src/js/selectize.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.4/angular.min.js"></script>
-    <script src="src/js/selectize.min.js"></script>
     <link rel="stylesheet" type="text/css" href="bower_components/selectize/dist/css/selectize.css"/>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="bower_components/angular-plotly/src/angular-plotly.js"></script>
@@ -24,6 +24,8 @@
 	  <color-button ng-click="colorize()" type="button" value="Color!" id="color-button"></color-button>
 	</div>
 	<color-select id="select-groups" style="width=50%" multiple ng-model="trace_fields" placeholder="Select attributes to color by..."></color-select>
+	</br>
+	<file-input data-url="http://localhost:3000/euclid_pca" id="euclid-color-input"></file-input>
       </div>
     </div> 
   </body>
