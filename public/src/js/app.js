@@ -208,8 +208,19 @@ angular.module("mercatorApp",['plotly'])
     	    }]
     	};
     }])
+    // factory for handling http requests
     .factory('httpRequests', ['$http', '$log', function($http, $log) {
 	return {
+	    /**  
+	     httpRequests.post
+	     url: type string
+	     data: type json
+	     type: type string
+	     successCallback: type function handle
+	     errorCallback: type function handle
+
+	     return: void
+	     */
 	    post: (url, data, type, successCallback, errorCallback = $log.error()) => {
 		$http({
 		    url: url,
@@ -218,23 +229,41 @@ angular.module("mercatorApp",['plotly'])
 		    headers: {
 			'Content-Type': type
 		    }
-		}).then(successCallback, errorCallback);
+		}).then((response) => {
+		    $log.log(response.status);
+		}, (response) => {
+		    $log.error(response.status);
+		});
 
 	    }
 	};
     }])
+    /**
+     file input directive
+    */
     .directive('fileInput', ['httpRequests', '$log', function(httpRequests,$log) {
 	return{
 	    restrict: 'E',
 	    template: '<input type="file"></input>',
-	    scope: true,
+	    scope: true, // inherited isolated scope
 	    replace: true,
 	    link: (scope, element, attrs) => {
-		scope.url = attrs.url;
+		scope.url = attrs.url; // requires url declaration in html attributes
 		element.on('change', () => {
-		    var formData = new FormData();
-		    formData.append('file', element[0].files[0]);
-		    httpRequests.post(scope.url, formData, $log.log());
+		    // var formData = new FormData();
+		    // formData.append('file', element[0].files[0]);
+		    // httpRequests.post(scope.url, formData, $log.log());
+
+		    var file = element[0].files[0];
+		    var r = new FileReader();
+		    r.onload = (e) => {
+			var contents = e.target.result;
+			scope.$apply(() => {
+			    scope.fileReader = contents;
+			});
+		    };
+
+		    r.readAsText(file);
 		});
 	    }
 	};

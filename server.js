@@ -104,14 +104,14 @@ app.post('/euclid_pca',textParser, (req, res) => {
 
 	console.log('Data written to tmp/incoming/entry_'+num+'.tsv');
 
-	exec('gsed -f sh/newlines_sed.sh tmp/incoming/entry_' + num+'.tmp > tmp/incoming_tsv/entry_'+num+'.tsv', (error, stdout, stderr) => {
+	exec('gsed -f public/src/sh/newlines_sed.sh tmp/incoming/entry_' + num+'.tmp > tmp/incoming_tsv/entry_'+num+'.tsv', (error, stdout, stderr) => {
 	    if (error) {
 		console.error(`exec error: ${error}`);
 		res.send(error);
 		return;
 	    }
 
-	    exec('echo ' + num + ' | Rscript R/euclidian_pca_distance.R', (error, stdout, stderr) => {
+	    exec('echo ' + num + ' | Rscript public/src/R/euclidian_pca_distance.R', (error, stdout, stderr) => {
 		// exec('echo ' + JSON.stringify(req.body), (error, stdout, stderr) => {
     		if (error) {
     		    console.error(`exec error: ${error}`);
