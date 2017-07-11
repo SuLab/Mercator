@@ -230,7 +230,7 @@ angular.module("mercatorApp",['plotly'])
 			'Content-Type': type
 		    }
 		}).then((response) => {
-		    $log.log(response.status);
+		    $log.log(response.data);
 		}, (response) => {
 		    $log.error(response.status);
 		});
@@ -250,20 +250,15 @@ angular.module("mercatorApp",['plotly'])
 	    link: (scope, element, attrs) => {
 		scope.url = attrs.url; // requires url declaration in html attributes
 		element.on('change', () => {
-		    // var formData = new FormData();
-		    // formData.append('file', element[0].files[0]);
-		    // httpRequests.post(scope.url, formData, $log.log());
-
-		    var file = element[0].files[0];
-		    var r = new FileReader();
-		    r.onload = (e) => {
-			var contents = e.target.result;
-			scope.$apply(() => {
-			    scope.fileReader = contents;
-			});
-		    };
-
-		    r.readAsText(file);
+		    var output = "";
+		    reader = new FileReader();
+		    if(element[0].files && element[0].files[0]){
+			reader.onload = (e) => {
+			    output = e.target.result;
+			    httpRequests.post(scope.url, output, $log.log());
+			};
+			reader.readAsText(element[0].files[0]);
+		    }
 		});
 	    }
 	};

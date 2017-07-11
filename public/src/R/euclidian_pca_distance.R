@@ -21,7 +21,7 @@ close(f)
 
 ## num <- '5965'
 
-datFile <- sprintf('tmp/incoming_tsv/entry_%s.tsv',num)
+datFile <- sprintf('private/tmp/incoming/entry_%s.tsv',num)
 
 ## line <- readChar(datFile,file.info(datFile)$size)
 
@@ -40,11 +40,11 @@ names(gene.vec) <- rownames(gene.dat)
 
 ## samp.ids <- list.files('/Users/Jake/Documents/Projects/Mercator/src/express_prototype/data/sampDB/')
 
-map.dat <- readRDS('/Users/Jake/Documents/Projects/Mercator/data/recount/pca/recount_pca.RDS')
+map.dat <- readRDS('private/data/recount/pca/recount_pca.RDS')
 
-rotation.dat <- readRDS('/Users/Jake/Documents/Projects/Mercator/data/recount/pca/recount_rotation_50.RDS')
+rotation.dat <- readRDS('private/data/recount/pca/recount_rotation_50.RDS')
 
-map.centers <- readRDS('/Users/Jake/Documents/Projects/Mercator/data/recount/pca/pca_center.RDS')
+map.centers <- readRDS('private/data/recount/pca/pca_center.RDS')
 
 center.vec <- gene.vec - map.centers
 
@@ -61,6 +61,6 @@ names(dist.vec) <- gsub(".RDS","",names(dist.vec))
 
 ## write.table(dist.vec,stdout(),sep='\t')
 
-write.table(dist.vec,sprintf('/Users/Jake/Documents/Projects/Mercator/src/express_prototype/tmp/outgoing/entry_%s.tsv',num),sep='\t')
+write.table(dist.vec,sprintf('private/tmp/outgoing/entry_%s.tsv',num),sep='\t')
 
 stopCluster(cl)

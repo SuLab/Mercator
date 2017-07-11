@@ -97,45 +97,47 @@ app.post('/euclid_pca',textParser, (req, res) => {
 
     var num = Math.floor(Math.random()*8192);
 
-    fs.writeFile("tmp/incoming/entry_"+num+".tmp",req.body,(err) => {
+    fs.writeFile("private/tmp/incoming/entry_"+num+".tsv",req.body,(err) => {
 	if(err) {
-	    return console.log(err);
+	    console.log(err);
+	    return;
 	}
 
-	console.log('Data written to tmp/incoming/entry_'+num+'.tsv');
+	console.log('Data written to private/tmp/incoming/entry_'+num+'.tsv');
 
-	exec('gsed -f public/src/sh/newlines_sed.sh tmp/incoming/entry_' + num+'.tmp > tmp/incoming_tsv/entry_'+num+'.tsv', (error, stdout, stderr) => {
-	    if (error) {
-		console.error(`exec error: ${error}`);
-		res.send(error);
-		return;
-	    }
+	// exec('gsed -f public/src/sh/newlines_sed.sh private/tmp/incoming/entry_' + num+'.tmp > private/tmp/incoming_tsv/entry_'+num+'.tsv', (error, stdout, stderr) => {
+	//     if (error) {
+	// 	console.error(`exec error: ${error}`);
+	// 	res.send(error);
+	// 	return;
+	//     }
 
-	    exec('echo ' + num + ' | Rscript public/src/R/euclidian_pca_distance.R', (error, stdout, stderr) => {
-		// exec('echo ' + JSON.stringify(req.body), (error, stdout, stderr) => {
-    		if (error) {
-    		    console.error(`exec error: ${error}`);
-    		    res.send(error);
-    		    return;
-    		}
-    		console.log(`stdout: ${stdout}`);
-    		console.log(`stderr: ${stderr}`);
+	exec('echo ' + num + ' | Rscript public/src/R/euclidian_pca_distance.R', (error, stdout, stderr) => {
+	    // exec('echo ' + JSON.stringify(req.body), (error, stdout, stderr) => {
+    	    if (error) {
+    		console.error(`exec error: ${error}`);
+    		res.send(error);
+    		return;
+    	    }
+    	    console.log(`stdout: ${stdout}`);
+    	    console.log(`stderr: ${stderr}`);
 
-		res.set({
-	    	    'Content-Type': 'text/plain'});
+	    res.set({
+	    	'Content-Type': 'text/plain'});
 
-		res.sendFile('entry_'+num+'.tsv',{ root: path.join(__dirname+'/tmp/outgoing/')},function(err){
-	    	    if(err) {
-	    		console.error(`exec error: ${err}`);
-	    		res.send(error);
-	    		return;
-	    	    }
-	    	    else{
-	    		console.log('file sent');
-	    	    }
-		});
+	    res.sendFile('entry_'+num+'.tsv',{ root: path.join(__dirname+'/private/tmp/outgoing/')},function(err){
+	    	if(err) {
+		    console.error(`exec error: ${err}`);
+	    	    res.send(error);
+	    	    return;
+	    	}
+	    	else{
+		    console.log('file sent');
+	    	    return;
+	    	}
 	    });
 	});
+	return;
     });
 });
 
