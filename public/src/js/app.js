@@ -1,4 +1,5 @@
 angular.module("mercatorApp",['plotly'])
+
     .factory('csvParse', () => {
 	return {
 	    CSVtoArray: (text) => {
@@ -7,6 +8,7 @@ angular.module("mercatorApp",['plotly'])
 		// return NULL if input string is not well formed CSV string.
 		if (!re_valid.test(text)) {return null;}
 		var a = [];                     // Initialize array to receive values.
+
 		text.replace(re_value, // "Walk" the string using replace with callback.
 			     function(m0, m1, m2, m3) {
 				 // Remove backslash from \' in single quoted values.
@@ -22,38 +24,17 @@ angular.module("mercatorApp",['plotly'])
 	    }
 	};
     })
-    .factory('plotData',['csvParse','$http', '$q', '$log', function(csv,$http,$q,$log) {
-	// csv parser
-	// function CSVtoArray(text) {
-	//     var re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
-	//     var re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-	//     // return NULL if input string is not well formed CSV string.
-	//     if (!re_valid.test(text)) return null;
-	//     var a = [];                     // Initialize array to receive values.
-	//     text.replace(re_value, // "Walk" the string using replace with callback.
-	// 		 function(m0, m1, m2, m3) {
-	// 		     // Remove backslash from \' in single quoted values.
-	// 		     if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-	// 		     // Remove backslash from \" in double quoted values.
-	// 		     else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-	// 		     else if (m3 !== undefined) a.push(m3);
-	// 		     return ''; // Return empty string.
-	// 		 });
-	//     // Handle special case of empty last value.
-	//     if (/,\s*$/.test(text)) a.push('');
-	//     return a;
-	// };
 
-
+    .factory('plotData',['csvParse','$http', '$q', '$log', (csv,$http,$q,$log) => {
 	var factory = {
 	    // return column key from data matrix rows 
-	    
 
-	    unpack: function(rows,key) {
-		return rows.map(function(row) { return row[key]; });
+	    unpack: (rows,key) => {
+		return rows.map((row) => { return row[key]; });
 	    },
 	    // return promise of tsne data
-	    getData: function() {
+
+	    getData: () => {
 		return $http.get('/data/tsne_dat.csv');
 	    },
 	    // parse csv data file for tsne
@@ -61,7 +42,8 @@ angular.module("mercatorApp",['plotly'])
 	    //      text: text of csv file
 	    // return:
 	    //      promise of resolve lines array
-	    processData: function(text) {
+
+	    processData: (text) => {
 		var textLines = text['data'].split(/\r\n|\n/);
 		var headers = csv.CSVtoArray(textLines[0]);
 		var deferred = $q.defer();
@@ -96,6 +78,7 @@ angular.module("mercatorApp",['plotly'])
 	    //   traceFields: array of strings corresponding to fields in csv header
 	    // return:
 	    //   promise with resolve trace array
+
 	    buildTraces: function(data, traceFields, colorArray = []) {
 		var deferred = $q.defer();
 		// if no trace fields, return single trace
@@ -155,15 +138,20 @@ angular.module("mercatorApp",['plotly'])
 	return factory; 
     }])
     // Controller for plotly plot
+
     .controller('plotController',['$scope', '$log', 'plotData', function($scope, $log, plotData){
 	// Initialization function
 	function init() {
+
 	    plotData.getData()
+
 		.then(plotData.processData)
+
 		.then((data) => {
 		    $scope.data = data;
 		    return plotData.buildTraces(data,[]);
 		})
+
 		.then((traces) => {
 		    $scope.layout = {
 			height: '100%',
@@ -187,12 +175,14 @@ angular.module("mercatorApp",['plotly'])
 			});
 		    };
 		})
+
 		.catch(function(error) {
 		    $log.error('Failed',error);
 		});
 	};
 	init();
     }])
+
     // Selectize menu for coloring plot
     .directive('colorSelect', function() {
 	return{
@@ -217,6 +207,7 @@ angular.module("mercatorApp",['plotly'])
 	    }]
 	};
     })
+
     // Button that allows coloring
     .directive('colorButton', ['plotData', function(plotData) {
     	return{
@@ -233,6 +224,7 @@ angular.module("mercatorApp",['plotly'])
     	    }]
     	};
     }])
+
     // factory for handling http requests
     .factory('httpRequests', ['$http', '$log', function($http, $log) {
 	return {
@@ -259,6 +251,7 @@ angular.module("mercatorApp",['plotly'])
 	    }
 	};
     }])
+
 /**
  file input directive
  */
@@ -269,17 +262,24 @@ angular.module("mercatorApp",['plotly'])
 	    template: `<input type="file"></input>`,
 	    scope: {
 		url: '@',
-		storage: '='
+		storage: '=',
+		status: '='
 		}, // isolated scope
 	    link: (scope, element, attrs) => {
+
 		element.on('change', () => {
+		    document.getElementById('pcaButton').disabled = true;
+		    scope.status="Processing...";
 		    var output = "";
 		    reader = new FileReader();
 		    if(element[0].files && element[0].files[0]){
 			reader.onload = (event) => {
 			    output = event.target.result;
 			    httpRequests.post(scope.url, output, 'text/plain')
+
 				.then((response) =>{
+				    document.getElementById('pcaButton').disabled=false;
+				    scope.status="Color by Distance";
 				    var textLines = response.data.split(/\r\n|\n/);
 				    scope.storage = {};
 				    textLines.forEach((entry) => {
@@ -289,27 +289,30 @@ angular.module("mercatorApp",['plotly'])
 				},(response) => {
 				    $log.error(response);
 				});
-
 			};
 			reader.readAsText(element[0].files[0]);
 		    }
 		});
 	    }
-
 	};
     }])
-    .directive('distButton', [ () => {
+
+    .directive('distButton', [() => {
 	return{
 	    restrict: 'E',
 	    replace: true,
 	    template: `<input type="button"></input>`,
 	    controller: ['plotData', '$q', '$scope', (plotData, $q, $scope) => {
+
+		$scope.euclid_pca_status="Waiting for file";
+
 		$scope.colorTrace = function(colorHash)	{
 		    var deferred = $q.defer();
 		    var colorVec = [];
 		    for(i=0; i<$scope.data.length; i++){
 			colorVec.push(colorHash[$scope.data[i]['data_id']]);
 		    }
+
 		    if(i===$scope.data.length){
 			deferred.resolve([{
 			    mode: 'markers',
@@ -324,6 +327,7 @@ angular.module("mercatorApp",['plotly'])
 		    }
 		    return deferred.promise;
 		};
+
 		$scope.colorClick = function(colorHash) {
 		    $scope.colorTrace(colorHash)
 			.then((response) => {
@@ -333,4 +337,3 @@ angular.module("mercatorApp",['plotly'])
 	    }]
 	};
     }]);
-

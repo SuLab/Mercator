@@ -25,9 +25,9 @@
 	</div>
 	<color-select id="select-groups" style="width=50%" multiple ng-model="trace_fields" placeholder="Select attributes to color by..."></color-select>
 	</br>
-	<file-input data-storage="euclid_pca_trace" data-url="http://localhost:3000/euclid_pca" id="euclid-color-input"></file-input>
+	<file-input data-storage="euclid_pca_trace" data-status="euclid_pca_status" data-url="http://localhost:3000/euclid_pca" id="euclid-color-input"></file-input>
 	<br>
-	<dist-button value="Color by Distance" ng-click="colorClick(euclid_pca_trace)"></dist-button>
+	<dist-button id="pcaButton" value="{{ euclid_pca_status }}" ng-click="colorClick(euclid_pca_trace)" disabled></dist-button>
       </div>
     </div> 
   </body>
