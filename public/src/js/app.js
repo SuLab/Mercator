@@ -1,29 +1,54 @@
 angular.module("mercatorApp",['plotly'])
-    .factory('plotData',['$http', '$q', '$log', function($http,$q,$log) {
-	// csv parser
-	function CSVtoArray(text) {
-	    var re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
-	    var re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-	    // return NULL if input string is not well formed CSV string.
-	    if (!re_valid.test(text)) return null;
-	    var a = [];                     // Initialize array to receive values.
-	    text.replace(re_value, // "Walk" the string using replace with callback.
-			 function(m0, m1, m2, m3) {
-			     // Remove backslash from \' in single quoted values.
-			     if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-			     // Remove backslash from \" in double quoted values.
-			     else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-			     else if (m3 !== undefined) a.push(m3);
-			     return ''; // Return empty string.
-			 });
-	    // Handle special case of empty last value.
-	    if (/,\s*$/.test(text)) a.push('');
-	    return a;
+    .factory('csvParse', () => {
+	return {
+	    CSVtoArray: (text) => {
+		var re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
+		var re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
+		// return NULL if input string is not well formed CSV string.
+		if (!re_valid.test(text)) {return null;}
+		var a = [];                     // Initialize array to receive values.
+		text.replace(re_value, // "Walk" the string using replace with callback.
+			     function(m0, m1, m2, m3) {
+				 // Remove backslash from \' in single quoted values.
+				 if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+				 // Remove backslash from \" in double quoted values.
+				 else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+				 else if (m3 !== undefined) a.push(m3);
+				 return ''; // Return empty string.
+			     });
+		// Handle special case of empty last value.
+		if (/,\s*$/.test(text)) a.push('');
+		return a;
+	    }
 	};
+    })
+    .factory('plotData',['csvParse','$http', '$q', '$log', function(csv,$http,$q,$log) {
+	// csv parser
+	// function CSVtoArray(text) {
+	//     var re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
+	//     var re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
+	//     // return NULL if input string is not well formed CSV string.
+	//     if (!re_valid.test(text)) return null;
+	//     var a = [];                     // Initialize array to receive values.
+	//     text.replace(re_value, // "Walk" the string using replace with callback.
+	// 		 function(m0, m1, m2, m3) {
+	// 		     // Remove backslash from \' in single quoted values.
+	// 		     if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+	// 		     // Remove backslash from \" in double quoted values.
+	// 		     else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+	// 		     else if (m3 !== undefined) a.push(m3);
+	// 		     return ''; // Return empty string.
+	// 		 });
+	//     // Handle special case of empty last value.
+	//     if (/,\s*$/.test(text)) a.push('');
+	//     return a;
+	// };
 
 
 	var factory = {
 	    // return column key from data matrix rows 
+	    
+
 	    unpack: function(rows,key) {
 		return rows.map(function(row) { return row[key]; });
 	    },
@@ -38,7 +63,7 @@ angular.module("mercatorApp",['plotly'])
 	    //      promise of resolve lines array
 	    processData: function(text) {
 		var textLines = text['data'].split(/\r\n|\n/);
-		var headers = CSVtoArray(textLines[0]);
+		var headers = csv.CSVtoArray(textLines[0]);
 		var deferred = $q.defer();
 
 		var lines = [];
@@ -46,7 +71,7 @@ angular.module("mercatorApp",['plotly'])
 		// length-1 because splitting on new line adds an empty line to the end of the file
 		for(var i=1; i < (textLines.length-1); i++){
 		    var line = {};
-		    var splitLine = CSVtoArray(textLines[i]);
+		    var splitLine = csv.CSVtoArray(textLines[i]);
 		    if(splitLine.length != headers.length){
 			$log.error('Header length',headers.length);
 			$log.error('Line Length',splitLine.length);
@@ -74,7 +99,7 @@ angular.module("mercatorApp",['plotly'])
 	    buildTraces: function(data, traceFields, colorArray = []) {
 		var deferred = $q.defer();
 		// if no trace fields, return single trace
-		if(traceFields.length === 0){
+		if(!traceFields || traceFields.length === 0){
 		    deferred.resolve([{
 			mode: 'markers',
 			name: 'test',
@@ -221,45 +246,91 @@ angular.module("mercatorApp",['plotly'])
 
 	     return: void
 	     */
-	    post: (url, data, type, successCallback, errorCallback = $log.error()) => {
-		$http({
+	    post: (url, data, type) => {
+		return $http({
 		    url: url,
 		    method: 'POST',
 		    data: data,
 		    headers: {
-			'Content-Type': type
+		    	'Content-Type': type
 		    }
-		}).then((response) => {
-		    $log.log(response.data);
-		}, (response) => {
-		    $log.error(response.status);
 		});
 
 	    }
 	};
     }])
-    /**
-     file input directive
-    */
-    .directive('fileInput', ['httpRequests', '$log', function(httpRequests,$log) {
+/**
+ file input directive
+ */
+    .directive('fileInput', ['csvParse', 'httpRequests', '$log', function(csv, httpRequests, $log) {
 	return{
 	    restrict: 'E',
-	    template: '<input type="file"></input>',
-	    scope: true, // inherited isolated scope
 	    replace: true,
+	    template: `<input type="file"></input>`,
+	    scope: {
+		url: '@',
+		storage: '='
+		}, // isolated scope
 	    link: (scope, element, attrs) => {
-		scope.url = attrs.url; // requires url declaration in html attributes
 		element.on('change', () => {
 		    var output = "";
 		    reader = new FileReader();
 		    if(element[0].files && element[0].files[0]){
-			reader.onload = (e) => {
-			    output = e.target.result;
-			    httpRequests.post(scope.url, output, $log.log());
+			reader.onload = (event) => {
+			    output = event.target.result;
+			    httpRequests.post(scope.url, output, 'text/plain')
+				.then((response) =>{
+				    var textLines = response.data.split(/\r\n|\n/);
+				    scope.storage = {};
+				    textLines.forEach((entry) => {
+					entryParsed = csv.CSVtoArray(entry);
+					scope.storage[entryParsed[0]] = Number(entryParsed[1]);
+				    });
+				},(response) => {
+				    $log.error(response);
+				});
+
 			};
 			reader.readAsText(element[0].files[0]);
 		    }
 		});
 	    }
+
+	};
+    }])
+    .directive('distButton', [ () => {
+	return{
+	    restrict: 'E',
+	    replace: true,
+	    template: `<input type="button"></input>`,
+	    controller: ['plotData', '$q', '$scope', (plotData, $q, $scope) => {
+		$scope.colorTrace = function(colorHash)	{
+		    var deferred = $q.defer();
+		    var colorVec = [];
+		    for(i=0; i<$scope.data.length; i++){
+			colorVec.push(colorHash[$scope.data[i]['data_id']]);
+		    }
+		    if(i===$scope.data.length){
+			deferred.resolve([{
+			    mode: 'markers',
+			    name: 'test',
+			    x: plotData.unpack($scope.data,'y1').map(function(x) { return Number(x); }),
+			    y: plotData.unpack($scope.data,'y2').map(function(x) { return Number(x); }),
+			    type: 'scattergl',
+			    marker: {
+				color: colorVec
+			    }
+			}]);
+		    }
+		    return deferred.promise;
+		};
+		$scope.colorClick = function(colorHash) {
+		    $scope.colorTrace(colorHash)
+			.then((response) => {
+			    $scope.traces = response;
+			});
+		};
+	    }]
 	};
     }]);
+

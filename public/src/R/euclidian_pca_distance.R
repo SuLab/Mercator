@@ -61,6 +61,6 @@ names(dist.vec) <- gsub(".RDS","",names(dist.vec))
 
 ## write.table(dist.vec,stdout(),sep='\t')
 
-write.table(dist.vec,sprintf('private/tmp/outgoing/entry_%s.tsv',num),sep='\t')
+write.table(dist.vec,sprintf('private/tmp/outgoing/entry_%s.tsv',num),sep=',',col.names=F)
 
 stopCluster(cl)

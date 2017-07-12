@@ -44,7 +44,7 @@ app.use(express.static('public'));
 // app.get('/',function(rep, res
 
 app.get('/', (req, res) =>  {
-    res.sendFile(path.join(__dirname + '/test.html'));
+    res.sendFile(path.join(__dirname + '/index.html'));
 });
 
 app.post('/euclid_distance',textParser, (req, res) => {
@@ -65,7 +65,6 @@ app.post('/euclid_distance',textParser, (req, res) => {
 		return;
 	    }
 	    exec('echo ' + num + ' | Rscript R/euclidian_distance.R', (error, stdout, stderr) => {
-		// exec('echo ' + JSON.stringify(req.body), (error, stdout, stderr) => {
     		if (error) {
     		    console.error(`exec error: ${error}`);
     		    res.send(error);
