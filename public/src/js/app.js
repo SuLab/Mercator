@@ -144,14 +144,25 @@ angular.module("mercatorApp",['plotly'])
 	// Initialization function
 	function init() {
 
-	    $scope.groupList = {};
+	    $scope.groupList = [{
+		marked: false,
+		id: 101,
+		groupName: 'test',
+		cardinality: 1,
+		groupLabel: 'test: 1'}];
 	    $scope.selectedGroup = null;
+	    $scope.removeGroup = (id) => {
+		
+		$scope.groupList = $scope.groupList.filter((entry) => { return entry.id !== id;});
+		// $scope.$apply();
+
+	    };
 	    $scope.addGroup = () => {
 
 		var entry = {
 		    marked: false,
+		    id: Math.floor(Math.random()*11000),
 		    groupName: $scope.inputGroupName,
-		    id: Math.floor(Math.random*11000),
 		    cardinality: $scope.selectedGroup.points.length,
 		    groupLabel: $scope.inputGroupName + ': ' + $scope.selectedGroup.points.length
 		};
@@ -160,7 +171,7 @@ angular.module("mercatorApp",['plotly'])
 
 		document.getElementById('addSelectionInput').disabled = true;
 		document.getElementById('groupForm').reset();
-		
+
 	    };
 	    
 	    plotData.getData()
