@@ -29,6 +29,15 @@
 	<br>
 	<dist-button id="pcaButton" value="{{ euclid_pca_status }}" ng-click="colorClick(euclid_pca_trace)" disabled></dist-button>
       </div>
+      <div id="group-list">
+	<form ng-submit="addGroup()" id="groupForm">
+	  <input type="text" ng-model="inputGroupName" size="30" placeholder="Add selected group">
+	  <input id="addSelectionInput" type="submit" value="Add Group" disabled>
+	</form>
+	<div ng-repeat="x in groupList">
+	  <input type="checkbox" ng-model="x.marked"><span ng-bind="x.groupLabel"></span><input type="button" value="X" ng-click="removeGroup(x.id)">
+	</div>
+      </div>
     </div> 
   </body>
 </html>

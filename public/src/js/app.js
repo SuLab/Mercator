@@ -72,13 +72,13 @@ angular.module("mercatorApp",['plotly'])
 		}
 		return deferred.promise;
 	    },
+
 	    // Build trace array from data array and tracefields
 	    // input:
 	    //   data: array of data hashes corresponding to rows of input csv
 	    //   traceFields: array of strings corresponding to fields in csv header
 	    // return:
 	    //   promise with resolve trace array
-
 	    buildTraces: function(data, traceFields, colorArray = []) {
 		var deferred = $q.defer();
 		// if no trace fields, return single trace
@@ -86,11 +86,12 @@ angular.module("mercatorApp",['plotly'])
 		    deferred.resolve([{
 			mode: 'markers',
 			name: 'test',
-			x: factory.unpack(data,'y1').map(function(x) { return Number(x); }),
-			y: factory.unpack(data,'y2').map(function(x) { return Number(x); }),
+			x: factory.unpack(data,'y1'),
+			y: factory.unpack(data,'y2'),
 			type: 'scattergl'
 		    }]);
 		}
+
 		else{
 		    traces = [];
 		    // return single string traceName that defines name of trace for a given entry line and fields traceFields
@@ -121,8 +122,8 @@ angular.module("mercatorApp",['plotly'])
 					mode: 'markers',
 					name: traceName,
 					type: 'scattergl',
-					x: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y1').map(function(x) { return Number(x); }),
-					y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2').map(function(x) { return Number(x); })
+					x: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y1'),
+					y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2')
 				    };
 				    resolve(trace);
 				}));
@@ -143,15 +144,31 @@ angular.module("mercatorApp",['plotly'])
 	// Initialization function
 	function init() {
 
+	    $scope.groupList = {};
+	    $scope.selectedGroup = null;
+	    $scope.addGroup = () => {
+
+		var entry = {
+		    marked: false,
+		    groupName: $scope.inputGroupName,
+		    id: Math.floor(Math.random*11000),
+		    cardinality: $scope.selectedGroup.points.length,
+		    groupLabel: $scope.inputGroupName + ': ' + $scope.selectedGroup.points.length
+		};
+
+		$scope.groupList.push(entry);
+
+		document.getElementById('addSelectionInput').disabled = true;
+		document.getElementById('groupForm').reset();
+		
+	    };
+	    
 	    plotData.getData()
-
 		.then(plotData.processData)
-
 		.then((data) => {
 		    $scope.data = data;
 		    return plotData.buildTraces(data,[]);
 		})
-
 		.then((traces) => {
 		    $scope.layout = {
 			height: '100%',
@@ -170,6 +187,8 @@ angular.module("mercatorApp",['plotly'])
 				//     $scope.numberOfSelectedPoints = event.points.length;
 				// });
 				$scope.numberOfSelectedPoints = event.points.length;
+				$scope.selectedGroup = event;
+				document.getElementById('addSelectionInput').disabled = false;
 				$scope.$apply();
 			    }
 			});
@@ -255,6 +274,7 @@ angular.module("mercatorApp",['plotly'])
 /**
  file input directive
  */
+
     .directive('fileInput', ['csvParse', 'httpRequests', '$log', function(csv, httpRequests, $log) {
 	return{
 	    restrict: 'E',
@@ -284,7 +304,7 @@ angular.module("mercatorApp",['plotly'])
 				    scope.storage = {};
 				    textLines.forEach((entry) => {
 					entryParsed = csv.CSVtoArray(entry);
-					scope.storage[entryParsed[0]] = Number(entryParsed[1]);
+					scope.storage[entryParsed[0]] = entryParsed[1];
 				    });
 				},(response) => {
 				    $log.error(response);
@@ -311,17 +331,23 @@ angular.module("mercatorApp",['plotly'])
 		    var colorVec = [];
 		    for(i=0; i<$scope.data.length; i++){
 			colorVec.push(colorHash[$scope.data[i]['data_id']]);
+			if(i===15000){
+			    console.log('');
+			}
 		    }
 
 		    if(i===$scope.data.length){
 			deferred.resolve([{
 			    mode: 'markers',
 			    name: 'test',
-			    x: plotData.unpack($scope.data,'y1').map(function(x) { return Number(x); }),
-			    y: plotData.unpack($scope.data,'y2').map(function(x) { return Number(x); }),
+			    x: plotData.unpack($scope.data,'y1'),
+			    y: plotData.unpack($scope.data,'y2'),
+			    text: colorVec,
 			    type: 'scattergl',
+			    hoverinfo: 'text',
 			    marker: {
-				color: colorVec
+				color: colorVec,
+				showscale: true
 			    }
 			}]);
 		    }
@@ -337,3 +363,4 @@ angular.module("mercatorApp",['plotly'])
 	    }]
 	};
     }]);
+

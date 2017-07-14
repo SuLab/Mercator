@@ -48,14 +48,14 @@
                         Plotly.Plots.resize(graph);
                     }
 
-                    scope.$watch(
-                        function(scope) {
-                            return scope.plotlyLayout;
-                        },
-                        function(newValue, oldValue) {
-                            if (angular.equals(newValue, oldValue) && initialized) return;
-                            onUpdate();
-                        }, true);
+                    // scope.$watch(
+                    //     function(scope) {
+                    //         return scope.plotlyLayout;
+                    //     },
+                    //     function(newValue, oldValue) {
+                    //         if (angular.equals(newValue, oldValue) && initialized) return;
+                    //         onUpdate();
+                    //     }, true);
 
                     scope.$watch(
                         function(scope) {
