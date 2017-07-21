@@ -24,6 +24,7 @@
 	  <color-button ng-click="colorize()" type="button" value="Color!" id="color-button"></color-button>
 	</div>
 	<color-select id="select-groups" style="width=50%" multiple ng-model="trace_fields" placeholder="Select attributes to color by..."></color-select>
+
 	</br>
 	<file-input data-storage="euclid_pca_trace" data-status="euclid_pca_status" data-url="http://localhost:3000/euclid_pca" id="euclid-color-input"></file-input>
 	<br>
@@ -38,6 +39,18 @@
 	  <input type="checkbox" ng-model="x.marked"><span ng-bind="x.groupLabel"></span><input type="button" value="X" ng-click="removeGroup(x.id)">
 	</div>
       </div>
-    </div> 
+      <div>
+      </div>
+    </div>
+    <form filter-input ng-submit="addFilter()" id="filterForm">
+      <input multiple id="filter-select-field" style="width=50%" placeholder="Field" ng-model="field_select" required></input>
+      <input multiple id="filter-select-value" style="width=50%" placeholder="Value" ng-model="value_select" required></input>
+      <input multiple id="filter-select-action" style="width=50%" placeholder="Action" ng-model="action_select" required></input>
+      <input id="filterSubmit" type="submit" value="Add Filter">
+    </form>
+    <div ng-repeat="x in filterList">
+      <span ng-bind="x.filterLabel"></span><input type="checkbox" ng-model="x.marked"><input type="button" value="X" ng-click="removeFilter(x.id)">
+    </div>
+    <input type="button" value="Apply filters" ng-click="filterData()">
   </body>
 </html>

@@ -79,7 +79,7 @@ angular.module("mercatorApp",['plotly'])
 	    //   traceFields: array of strings corresponding to fields in csv header
 	    // return:
 	    //   promise with resolve trace array
-	    buildTraces: function(data, traceFields, colorArray = []) {
+	    buildTraces: function(data, traceFields) {
 		var deferred = $q.defer();
 		// if no trace fields, return single trace
 		if(!traceFields || traceFields.length === 0){
@@ -140,22 +140,14 @@ angular.module("mercatorApp",['plotly'])
     }])
     // Controller for plotly plot
 
-    .controller('plotController',['$scope', '$log', 'plotData', function($scope, $log, plotData){
+    .controller('plotController',['$http', '$scope', '$log', 'plotData', function($http, $scope, $log, plotData){
 	// Initialization function
 	function init() {
 
-	    $scope.groupList = [{
-		marked: false,
-		id: 101,
-		groupName: 'test',
-		cardinality: 1,
-		groupLabel: 'test: 1'}];
+	    $scope.groupList = [];
 	    $scope.selectedGroup = null;
 	    $scope.removeGroup = (id) => {
-		
 		$scope.groupList = $scope.groupList.filter((entry) => { return entry.id !== id;});
-		// $scope.$apply();
-
 	    };
 	    $scope.addGroup = () => {
 
@@ -173,7 +165,7 @@ angular.module("mercatorApp",['plotly'])
 		document.getElementById('groupForm').reset();
 
 	    };
-	    
+
 	    plotData.getData()
 		.then(plotData.processData)
 		.then((data) => {
@@ -211,6 +203,112 @@ angular.module("mercatorApp",['plotly'])
 		});
 	};
 	init();
+    }])
+
+    .directive('filterInput',['$http', function($http) {
+    	return{
+	    restrict: 'A',
+	    controller: ['$scope', 'plotData', ($scope, plotData) => {
+		$scope.filterData = () => {
+		    var cnt = 0;
+
+		    var filteredData = $scope.filterList.reduce((currData,filterEntry) => {
+			cnt++;
+			if(filterEntry.action === "exclude" && filterEntry.marked){
+			    return currData.filter((dataEntry) => {return !filterEntry.value.includes(dataEntry[filterEntry.field]); });
+			}
+			else if(filterEntry.action === "include" && filterEntry.marked){
+			    return currData.filter((dataEntry) => {return filterEntry.value.includes(dataEntry[filterEntry.field]); });
+			}
+			else{
+			    return currData;
+			}
+		    },$scope.data);
+
+		    if(cnt===$scope.filterList.length){
+			$scope.buildTraces(filteredData,$scope.trace_fields)
+			    .then((result) => $scope.traces = result);
+		    }
+
+		};
+
+		$scope.removeFilter = (id) => {
+		    $scope.filterList = $scope.filterList.filter((entry) => {return entry.id !== id;});
+		};
+
+		$scope.addFilter = () => {
+		    var entry = {
+			marked: true,
+			id: Math.floor(Math.random()*11000),
+			field: $scope.field_select,
+			value: $scope.value_select,
+			action: $scope.action_select,
+			filterLabel: $scope.action_select + ' ' + $scope.value_select + ' in ' + $scope.field_select
+		    };
+
+		    $scope.filterList.push(entry);
+
+		    document.getElementById('filterForm').reset();
+
+		};
+	    }],
+	    link: (scope, element, attrs) => {
+
+		scope.filterList = [];
+		
+    		var $select_field = $('#filter-select-field').selectize({
+		    maxItems: 1,
+		    valueField: 'id',
+		    labelField: 'title',
+		    searchField: 'title',
+		    options: [
+			{id: 'project', title: 'Data source'},
+			{id: 'tissue_general', title: 'General tissue'},
+			{id: 'tissue_detail', title: 'Detailed tissue'},
+			{id: 'extraction_kit', title: 'Extraction kit'},
+			{id: 'seq_platform', title: 'Sequencing platform'}
+		    ],
+    		    onChange: (value) => {
+    			if(!value.length) return;
+    			select_value.disable();
+    			select_value.clearOptions();
+			select_value.load((callback) => {
+			    $.getJSON("data/metadata.json", (data) => {
+				var results = data[value];
+				select_value.enable();
+				callback(results);
+			    });
+			});
+		    }
+		});
+
+		var $select_value = $('#filter-select-value').selectize({
+		    maxItems: null,
+		    valueField: 'name',
+		    labelField: 'name',
+		    searchField: 'name',
+		    create: false
+		});
+
+		var $select_action = $('#filter-select-action').selectize({
+		    maxItems: 1,
+		    valueField: 'id',
+		    labelField: 'title',
+		    searchField: 'title',
+		    create: false,
+		    options: [
+			{id: 'exclude', title: 'Remove'},
+			{id: 'include', title: 'Only'}
+			]
+		});
+
+		select_field = $select_field[0].selectize;
+		select_value = $select_value[0].selectize;
+
+		select_value.disable();
+		
+	    }
+    	};
     }])
 
     // Selectize menu for coloring plot
