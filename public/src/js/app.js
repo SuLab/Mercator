@@ -170,6 +170,7 @@ angular.module("mercatorApp",['plotly'])
 		.then(plotData.processData)
 		.then((data) => {
 		    $scope.data = data;
+		    $scope.filteredData = data;
 		    return plotData.buildTraces(data,[]);
 		})
 		.then((traces) => {
@@ -181,7 +182,7 @@ angular.module("mercatorApp",['plotly'])
 		    $scope.traces = traces;
 		    $scope.buildTraces=plotData.buildTraces;
 		    $scope.options = {showLink:false};
-		    $scope.numberOfSelectedPoints = 0;
+		    // $scope.numberOfSelectedPoints = 0;
 		    // function for defining listeners for events emitted by plotly.js
 		    $scope.plotlyEvents = (graph) => {
 			graph.on('plotly_selected', (event) => {
@@ -189,7 +190,7 @@ angular.module("mercatorApp",['plotly'])
 				// $timeout(function() {
 				//     $scope.numberOfSelectedPoints = event.points.length;
 				// });
-				$scope.numberOfSelectedPoints = event.points.length;
+				// $scope.numberOfSelectedPoints = event.points.length;
 				$scope.selectedGroup = event;
 				document.getElementById('addSelectionInput').disabled = false;
 				$scope.$apply();
@@ -209,10 +210,40 @@ angular.module("mercatorApp",['plotly'])
     	return{
 	    restrict: 'A',
 	    controller: ['$scope', 'plotData', ($scope, plotData) => {
+
+		
 		$scope.filterData = () => {
+
+		    function reduceFilters(){
+
+			filterSet = new Set();
+			
+			$scope.filterList.forEach((entry) => {
+			    filterSet.add(entry.field+'+'+entry.action);
+			});
+			
+			var reducedFilters = [];
+
+			filterSet.forEach((entry) => {
+			    var ids = entry.split('+');
+			    reducedFilters.push({
+				value: $scope.filterList.filter((filterEntry) => {return filterEntry.marked && filterEntry.field===ids[0] && filterEntry.action===ids[1];})
+				    .reduce((x,y) => x.concat(y.value),[]),
+				field: ids[0],
+				action: ids[1],
+				marked: true
+			    });
+			});
+			
+			return reducedFilters;
+		    }
+		    
+
+		    reducedFilters = reduceFilters();
+
 		    var cnt = 0;
 
-		    var filteredData = $scope.filterList.reduce((currData,filterEntry) => {
+		    $scope.filteredData = reducedFilters.reduce((currData,filterEntry) => {
 			cnt++;
 			if(filterEntry.action === "exclude" && filterEntry.marked){
 			    return currData.filter((dataEntry) => {return !filterEntry.value.includes(dataEntry[filterEntry.field]); });
@@ -225,8 +256,8 @@ angular.module("mercatorApp",['plotly'])
 			}
 		    },$scope.data);
 
-		    if(cnt===$scope.filterList.length){
-			$scope.buildTraces(filteredData,$scope.trace_fields)
+		    if(cnt===reducedFilters.length){
+			$scope.buildTraces($scope.filteredData,$scope.trace_fields)
 			    .then((result) => $scope.traces = result);
 		    }
 
@@ -344,7 +375,7 @@ angular.module("mercatorApp",['plotly'])
     	    replace: true,
     	    controller: ['$scope', ($scope) => {
 		$scope.colorize = function() {
-		    plotData.buildTraces($scope.data, $scope.trace_fields)
+		    plotData.buildTraces($scope.filteredData, $scope.trace_fields)
 			.then((result) => {
 			    $scope.traces=result;
 			});
@@ -438,19 +469,16 @@ angular.module("mercatorApp",['plotly'])
 		$scope.colorTrace = function(colorHash)	{
 		    var deferred = $q.defer();
 		    var colorVec = [];
-		    for(i=0; i<$scope.data.length; i++){
-			colorVec.push(colorHash[$scope.data[i]['data_id']]);
-			if(i===15000){
-			    console.log('');
-			}
+		    for(i=0; i<$scope.filteredData.length; i++){
+			colorVec.push(colorHash[$scope.filteredData[i]['data_id']]);
 		    }
 
-		    if(i===$scope.data.length){
+		    if(i===$scope.filteredData.length){
 			deferred.resolve([{
 			    mode: 'markers',
 			    name: 'test',
-			    x: plotData.unpack($scope.data,'y1'),
-			    y: plotData.unpack($scope.data,'y2'),
+			    x: plotData.unpack($scope.filteredData,'y1'),
+			    y: plotData.unpack($scope.filteredData,'y2'),
 			    text: colorVec,
 			    type: 'scattergl',
 			    hoverinfo: 'text',
