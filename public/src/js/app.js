@@ -1,4 +1,4 @@
-angular.module("mercatorApp",['plotly'])
+angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocompleteMod'])
 
     .factory('csvParse', () => {
 	return {
@@ -141,6 +141,89 @@ angular.module("mercatorApp",['plotly'])
     // Controller for plotly plot
 
     .controller('plotController',['$http', '$scope', '$log', 'plotData', function($http, $scope, $log, plotData){
+	var vm = this;
+
+	// vm.colorize = function() {
+	//     if(this.trace_fields){
+	// 	traceFields = this.trace_fields.map((entry) => {
+	// 	    return(entry.id);
+	// 	});
+	//     }
+	//     else{
+	// 	traceFields = [];
+	//     };
+						
+	//     plotData.buildTraces($scope.filteredData, traceFields)
+	// 	    .then((result) => {
+	// 		$scope.traces=result;
+	// 	    });
+    	//     };
+
+	$scope.filter_select = {"field": undefined,
+				"action": undefined,
+				"value": undefined};
+	$scope.trace_select = {"fields": undefined};
+
+	$scope.valueOptions = [];
+
+	$scope.valueSelectDisabled=true;
+
+	$scope.$watch(
+	    function($scope) {
+		return $scope.filter_select.field;
+	    },
+	    function(newValue,oldValue){
+		
+		if(newValue && (newValue.id == 'project' || newValue.id == 'seq_platform' || newValue.id == 'extraction_kit')){
+		    $http.get('/data/metadata.json').then((response) => {
+			
+			var result = response.data;
+
+			$scope.valueOptions = result[newValue.id];
+			$scope.valueSelectDisabled=false;
+
+		    });
+		} else {
+
+		    // if(newValue && (newValue.id == 'tissue_general' || newValue.id == 'tissue_detail')){
+			
+		    // }
+		    
+		    $scope.filter_select.value = undefined;
+		    $scope.valueSelectDisabled=true;
+		    $scope.valueOptions = [];
+
+		}
+	    });
+
+	// $scope.$watch(
+	//     ($scope) => {
+	// 	return $scope.uberon_selection;
+	//     },
+	//     (newVal, oldVal) => {
+
+	// 	if(newVal && ($scope.filter_select.field.id == 'tissue_general' || $scope.filter_select.field.id == 'tissue_detail')){
+		    
+	// 	    $scope.filter_select.value={'name': newVal.text, 'id': newVal.id};
+
+	// 	}
+
+	//     });
+	    
+	//     function(old, new) {
+
+	// 	if (new < 5) 
+	// // 	    $http.get('/data/metadata.json').then((response) => {
+
+	// // 		var result = response.data;
+			
+	// // 		$scope.valueOptions = result[new];
+	// 	}
+	//     };
+		    
+
+	// );
+
 	// Initialization function
 	function init() {
 
@@ -166,6 +249,21 @@ angular.module("mercatorApp",['plotly'])
 
 	    };
 
+
+	    $scope.attributeOptions = [
+		{id: 'project', title: 'Data source'},
+		{id: 'tissue_general', title: 'General tissue'},
+		{id: 'tissue_detail', title: 'Detailed tissue'},
+		{id: 'extraction_kit', title: 'Extraction kit'},
+		{id: 'seq_platform', title: 'Sequencing platform'}
+	    ];
+
+	    $scope.filterOptions = [
+		{id: 'exclude', title: 'Remove'},
+		{id: 'include', title: 'Only'}
+	    ];
+
+
 	    plotData.getData()
 		.then(plotData.processData)
 		.then((data) => {
@@ -182,15 +280,10 @@ angular.module("mercatorApp",['plotly'])
 		    $scope.traces = traces;
 		    $scope.buildTraces=plotData.buildTraces;
 		    $scope.options = {showLink:false};
-		    // $scope.numberOfSelectedPoints = 0;
 		    // function for defining listeners for events emitted by plotly.js
 		    $scope.plotlyEvents = (graph) => {
 			graph.on('plotly_selected', (event) => {
 			    if(event) {
-				// $timeout(function() {
-				//     $scope.numberOfSelectedPoints = event.points.length;
-				// });
-				// $scope.numberOfSelectedPoints = event.points.length;
 				$scope.selectedGroup = event;
 				document.getElementById('addSelectionInput').disabled = false;
 				$scope.$apply();
@@ -230,8 +323,7 @@ angular.module("mercatorApp",['plotly'])
 				value: $scope.filterList.filter((filterEntry) => {return filterEntry.marked && filterEntry.field===ids[0] && filterEntry.action===ids[1];})
 				    .reduce((x,y) => x.concat(y.value),[]),
 				field: ids[0],
-				action: ids[1],
-				marked: true
+				action: ids[1]
 			    });
 			});
 			
@@ -245,10 +337,10 @@ angular.module("mercatorApp",['plotly'])
 
 		    $scope.filteredData = reducedFilters.reduce((currData,filterEntry) => {
 			cnt++;
-			if(filterEntry.action === "exclude" && filterEntry.marked){
+			if(filterEntry.action === "exclude"){
 			    return currData.filter((dataEntry) => {return !filterEntry.value.includes(dataEntry[filterEntry.field]); });
 			}
-			else if(filterEntry.action === "include" && filterEntry.marked){
+			else if(filterEntry.action === "include"){
 			    return currData.filter((dataEntry) => {return filterEntry.value.includes(dataEntry[filterEntry.field]); });
 			}
 			else{
@@ -268,18 +360,36 @@ angular.module("mercatorApp",['plotly'])
 		};
 
 		$scope.addFilter = () => {
-		    var entry = {
-			marked: true,
-			id: Math.floor(Math.random()*11000),
-			field: $scope.field_select,
-			value: $scope.value_select,
-			action: $scope.action_select,
-			filterLabel: $scope.action_select + ' ' + $scope.value_select + ' in ' + $scope.field_select
-		    };
+
+		    if($scope.filter_select.field && ($scope.filter_select.field.id == 'tissue_general' || $scope.filter_select.field.id == 'tissue_detail')){
+			
+
+			var entry = {
+			    marked: true,
+			    id: Math.floor(Math.random()*11000),
+			    field: $scope.filter_select.field.id,
+			    value: $scope.uberon_selection.id,
+			    action: $scope.filter_select.action.id,
+			    filterLabel: $scope.filter_select.action.title + ' ' + $scope.uberon_selection.text + ' in ' + $scope.filter_select.field.title
+			};
+
+			
+		    } else {
+
+			
+			var entry = {
+			    marked: true,
+			    id: Math.floor(Math.random()*11000),
+			    field: $scope.filter_select.field.id,
+			    value: $scope.filter_select.value[0].name,
+			    action: $scope.filter_select.action.id,
+			    filterLabel: $scope.filter_select.action.title + ' ' + $scope.uberon_selection.text + ' in ' + $scope.filter_select.field.title
+			};
+
+
+		    }
 
 		    $scope.filterList.push(entry);
-
-		    document.getElementById('filterForm').reset();
 
 		};
 	    }],
@@ -287,85 +397,167 @@ angular.module("mercatorApp",['plotly'])
 
 		scope.filterList = [];
 		
-    		var $select_field = $('#filter-select-field').selectize({
-		    maxItems: 1,
-		    valueField: 'id',
-		    labelField: 'title',
-		    searchField: 'title',
-		    options: [
-			{id: 'project', title: 'Data source'},
-			{id: 'tissue_general', title: 'General tissue'},
-			{id: 'tissue_detail', title: 'Detailed tissue'},
-			{id: 'extraction_kit', title: 'Extraction kit'},
-			{id: 'seq_platform', title: 'Sequencing platform'}
-		    ],
-    		    onChange: (value) => {
-    			if(!value.length) return;
-    			select_value.disable();
-    			select_value.clearOptions();
-			select_value.load((callback) => {
-			    $.getJSON("data/metadata.json", (data) => {
-				var results = data[value];
-				select_value.enable();
-				callback(results);
-			    });
-			});
-		    }
-		});
+    		// var $select_field = $('#filter-select-field').selectize({
+		//     maxItems: 1,
+		//     valueField: 'id',
+		//     labelField: 'title',
+		//     searchField: 'title',
+		//     options: [
+		// 	{id: 'project', title: 'Data source'},
+		// 	{id: 'tissue_general', title: 'General tissue'},
+		// 	{id: 'tissue_detail', title: 'Detailed tissue'},
+		// 	{id: 'extraction_kit', title: 'Extraction kit'},
+		// 	{id: 'seq_platform', title: 'Sequencing platform'}
+		//     ],
+    		//     onChange: (value) => {
+    		// 	if(!value.length) return;
+    		// 	select_value.disable();
+    		// 	select_value.clearOptions();
+		// 	select_value.load((callback) => {
+		// 	    $.getJSON("data/metadata.json", (data) => {
+		// 		var results = data[value];
+		// 		select_value.enable();
+		// 		callback(results);
+		// 	    });
+		// 	});
+		//     }
+		// });
 
-		var $select_value = $('#filter-select-value').selectize({
-		    maxItems: null,
-		    valueField: 'name',
-		    labelField: 'name',
-		    searchField: 'name',
-		    create: false
-		});
+		// var $select_value = $('#filter-select-value').selectize({
+		//     maxItems: null,
+		//     valueField: 'name',
+		//     labelField: 'name',
+		//     searchField: 'name',
+		//     create: false
+		// });
 
-		var $select_action = $('#filter-select-action').selectize({
-		    maxItems: 1,
-		    valueField: 'id',
-		    labelField: 'title',
-		    searchField: 'title',
-		    create: false,
-		    options: [
-			{id: 'exclude', title: 'Remove'},
-			{id: 'include', title: 'Only'}
-			]
-		});
+		// var $select_action = $('#filter-select-action').selectize({
+		//     maxItems: 1,
+		//     valueField: 'id',
+		//     labelField: 'title',
+		//     searchField: 'title',
+		//     create: false,
+		//     options: [
+		// 	{id: 'exclude', title: 'Remove'},
+		// 	{id: 'include', title: 'Only'}
+		// 	]
+		// });
 
-		select_field = $select_field[0].selectize;
-		select_value = $select_value[0].selectize;
+		// select_field = $select_field[0].selectize;
+		// select_value = $select_value[0].selectize;
 
-		select_value.disable();
+		// select_value.disable();
 		
 	    }
     	};
     }])
-
-    // Selectize menu for coloring plot
-    .directive('colorSelect', function() {
+    // .directive('ontologySearch',[() => {
+    // 	return {
+    // 	    restrict: 'E',
+    // 	    replace: true,
+    // 	    template: '<input style="font-weight: normal" size="35" type="text" name="q" data-olswidget="select" data-olsontology="" data-selectpath="https://www.ebi.ac.uk/ols/" olstype="" id="local-searchbox" placeholder="Enter the term you are looking for" class="ac_input"></input>',
+    // 	    link: (scope, element, attrs) => {
+    // 		$(document).ready( () => {
+    // 		    // var instance = new app();
+    // 		    olsAutocompleteMod.olsAutocomplete.start();
+    // 		});
+    // 	    }
+    // 	};
+    // }])
+    .directive('ontologyExplorer',[() => {
 	return{
 	    restrict: 'E',
-	    template: '<select></select>',
 	    replace: true,
-	    controller: ['$scope', ($scope) => {
-		var $select = $('#select-groups').selectize({
-		    maxItems: null,
-		    valueField: 'id',
-		    labelField: 'title',
-		    searchField: 'title',
-		    options: [
-			{id: 'project', title: 'Data source'},
-			{id: 'tissue_general', title: 'General tissue'},
-			{id: 'tissue_detail', title: 'Detailed tissue'},
-			{id: 'extraction_kit', title: 'Extraction kit'},
-			{id: 'seq_platform', title: 'Sequencing platform'}
-		    ],
-		    create: false
+	    template: '<div></div>',
+	    scope: {
+		ont: '@',
+		ontNode: '=',
+		divid: '@'
+	    },
+	    controller: ($scope) => {
+		$('#'+$scope.divid).on('select_node.jstree', (e, data) => {
+			$scope.ontNode = data.node;
+			// $scope.filter_select.value = {'id': data.node.id,
+			// 			     'title': data.node.text};
+		    });
+
+		
+	    },
+	    link: (scope, element, attrs) => {
+		// scope.ontN = null;
+
+		var createCORSRequest = function(method, url) {
+
+		    var xhr = new XMLHttpRequest();
+		    if ("withCredentials" in xhr) {
+			xhr.open(method,url,true);
+		    } else if (typeof XDomainRequest != "undefined"){
+			xhr = new XDomainRequest();
+			xhr.open(method,url);
+		    }
+		    else {
+			xhr = null;
+		    }
+		    return xhr;
+		};
+
+
+		var tree = $('#'+scope.divid).jstree({
+		    'plugins': [],
+		    'core': {
+			'data': (node,cb) => {
+			    url = node.id === '#' ?
+				'data/ontologies/roots/' + scope.ont + '_jstree_roots.json':
+				'https://www.ebi.ac.uk/ols/api/ontologies/' + scope.ont + '/terms/' + encodeURIComponent(encodeURIComponent(node.original.iri)) + '/jstree/children/' + node.id;
+			    var xhr = createCORSRequest('GET', url);
+
+			    if(!xhr){
+				alert('Your browser does not support this application! We suggest Chrome or Firefox');
+			    }
+
+			    xhr.onload = () => {
+				var response = JSON.parse(xhr.response);
+				cb.call(this,response);
+			    };
+			    
+			    xhr.onerror = () => {
+				alert('Error');
+			    };
+
+			    xhr.send();
+			}
+		    }
 		});
-	    }]
+			   
+
+	    }
 	};
-    })
+    }])
+
+    // Selectize menu for coloring plot
+    // .directive('colorSelect', function() {
+    // 	return{
+    // 	    restrict: 'E',
+    // 	    template: '<select></select>',
+    // 	    replace: true,
+    // 	    controller: ['$scope', ($scope) => {
+    // 		var $select = $('#select-groups').selectize({
+    // 		    maxItems: null,
+    // 		    valueField: 'id',
+    // 		    labelField: 'title',
+    // 		    searchField: 'title',
+    // 		    options: [
+    // 			{id: 'project', title: 'Data source'},
+    // 			{id: 'tissue_general', title: 'General tissue'},
+    // 			{id: 'tissue_detail', title: 'Detailed tissue'},
+    // 			{id: 'extraction_kit', title: 'Extraction kit'},
+    // 			{id: 'seq_platform', title: 'Sequencing platform'}
+    // 		    ],
+    // 		    create: false
+    // 		});
+    // 	    }]
+    // 	};
+    // })
 
     // Button that allows coloring
     .directive('colorButton', ['plotData', function(plotData) {
@@ -375,7 +567,16 @@ angular.module("mercatorApp",['plotly'])
     	    replace: true,
     	    controller: ['$scope', ($scope) => {
 		$scope.colorize = function() {
-		    plotData.buildTraces($scope.filteredData, $scope.trace_fields)
+		    if($scope.trace_select.fields){
+			traceFields = $scope.trace_select.fields.map((entry) => {
+			    return(entry.id);
+			});
+		    }
+		    else{
+			traceFields = [];
+		    };
+		    
+		    plotData.buildTraces($scope.filteredData, traceFields)
 			.then((result) => {
 			    $scope.traces=result;
 			});
@@ -456,7 +657,6 @@ angular.module("mercatorApp",['plotly'])
 	    }
 	};
     }])
-
     .directive('distButton', [() => {
 	return{
 	    restrict: 'E',

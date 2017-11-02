@@ -4,6 +4,8 @@ const fs = require('fs');
 const exec = require('child_process').exec;
 const Rserve = require('rserve-js');
 const path = require('path');
+const request = require('request');
+
 
 var app = express();
 
@@ -19,6 +21,13 @@ app.use(express.static('public'));
 
 app.get('/', (req, res) =>  {
     res.sendFile(path.join(__dirname + '/index.html'));
+});
+
+app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
+
+    var url = 'https://www.ebi.ac.uk/ols/api/ontologies/terms/' + req.params.resourceIRI + '/children/jstree/' + req.params.nodeID;
+    req.pipe(request(url)).pipe(res);
+
 });
 
 app.post('/euclid_pca',textParser, (req, res) => {
@@ -57,12 +66,12 @@ app.post('/euclid_pca',textParser, (req, res) => {
 	    	    return;
 	    	}
 	    });
+	    
+	    return;
 	});
 	return;
     });
-    return;
 });
-
 
 const server = app.listen(3000,function () {
     console.log('Example app listening on port 3000');
