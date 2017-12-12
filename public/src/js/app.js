@@ -88,7 +88,8 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 			name: 'test',
 			x: factory.unpack(data,'y1'),
 			y: factory.unpack(data,'y2'),
-			type: 'scattergl'
+			type: 'scattergl',
+			opacity: 1.0
 		    }]);
 		}
 
@@ -123,7 +124,8 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 					name: traceName,
 					type: 'scattergl',
 					x: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y1'),
-					y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2')
+					y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2'),
+					opacity: 1.0
 				    };
 				    resolve(trace);
 				}));
@@ -373,6 +375,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 			    filterLabel: $scope.filter_select.action.title + ' ' + $scope.uberon_selection.text + ' in ' + $scope.filter_select.field.title
 			};
 
+			$scope.filterList.push(entry);
 			
 		    } else {
 
@@ -383,13 +386,14 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 			    field: $scope.filter_select.field.id,
 			    value: $scope.filter_select.value[0].name,
 			    action: $scope.filter_select.action.id,
-			    filterLabel: $scope.filter_select.action.title + ' ' + $scope.uberon_selection.text + ' in ' + $scope.filter_select.field.title
+			    filterLabel: $scope.filter_select.action.title + ' ' + $scope.filter_select.value[0].name + ' in ' + $scope.filter_select.field.title
 			};
 
+			$scope.filterList.push(entry);
 
 		    }
 
-		    $scope.filterList.push(entry);
+		    // $scope.filterList.push(entry);
 
 		};
 	    }],
