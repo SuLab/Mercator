@@ -35,13 +35,17 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	    // return promise of tsne data
 
 	    getData: () => {
-		return $http.get('/data/tsne_dat.csv');
+		return $http.get('/data/recount_noAmnio_tsne.csv');
 	    },
 	    // parse csv data file for tsne
 	    // input:
 	    //      text: text of csv file
 	    // return:
 	    //      promise of resolve lines array
+
+	    // getMetadata: () => {
+	    // 	return $http.get('data/recount_metadata.json');
+	    // },
 
 	    processData: (text) => {
 		var textLines = text['data'].split(/\r\n|\n/);
@@ -142,7 +146,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
     }])
     // Controller for plotly plot
 
-    .controller('plotController',['$http', '$scope', '$log', 'plotData', function($http, $scope, $log, plotData){
+    .controller('plotController',['$http', '$scope', '$log', '$q', 'plotData', function($http, $scope, $log, $q, plotData){
 	var vm = this;
 
 	// vm.colorize = function() {
@@ -169,6 +173,79 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	$scope.valueOptions = [];
 
 	$scope.valueSelectDisabled=true;
+
+	$scope.buildOntologyTraces = function(data,ontology){
+
+	    var deferred = $q.defer();
+
+	    if($scope.ontologyInfo[ontology].length == 0){
+		deferred.resolve([{
+		    mode: 'markers',
+		    name: 'test',
+		    x: factory.unpack(data,'y1'),
+		    y: factory.unpack(data, 'y2'),
+		    type: 'scattergl',
+		    opacity: 0.5,
+		    marker: {color: 'rgb(128,128,128)'}
+		}]);
+	    }
+
+	    else{
+		traces = [];
+		runsInTraces = [];
+		ontologyData = $scope.ontologyInfo[ontology];
+		let traceMaking = Object.keys(ontologyData).map(entry => {
+		    return $q((resolve,reject) => {
+			runsInTraces = runsInTraces.concat(ontologyData[entry]);
+			traces.push({
+			    mode: 'markers',
+			    type: 'scattergl',
+			    x: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y1'),
+			    y: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y2'),
+			    opacity: 1.0
+			});
+			resolve();
+		    });
+		});
+		
+		$q.all(traceMaking)
+		    .then(() => {
+			traces.push({
+			    mode: 'markers',
+			    type: 'scattergl',
+			    x: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y1'),
+			    y: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y2'),
+			    opacity: 0.2
+			});
+			deferred.resolve(traces);
+		    });
+
+	    }
+	    return deferred.promise;
+	};
+
+	$scope.$watch(
+	    function($scope) {
+		return $scope.uberon_selection;
+	    },
+	    function(newValue, oldValue){
+
+		if(newValue && newValue != oldValue){
+
+		    var id = newValue.a_attr.iri.split('/').slice(-1)[0];
+
+		    $http.get('http://localhost:3000/ontology_info/' + id)
+			.then((response) => {
+			    $scope.ontologyInfo.uberon = response.data;
+
+			    $scope.buildOntologyTraces($scope.filteredData,'uberon')
+				.then((ontologyTraces) => {
+				    $scope.uberonTraces = ontologyTraces;
+				});
+			});
+		}
+	    });
+			     
 
 	$scope.$watch(
 	    function($scope) {
@@ -203,31 +280,24 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	// 	return $scope.uberon_selection;
 	//     },
 	//     (newVal, oldVal) => {
-
 	// 	if(newVal && ($scope.filter_select.field.id == 'tissue_general' || $scope.filter_select.field.id == 'tissue_detail')){
-		    
 	// 	    $scope.filter_select.value={'name': newVal.text, 'id': newVal.id};
-
 	// 	}
-
 	//     });
-	    
 	//     function(old, new) {
-
 	// 	if (new < 5) 
 	// // 	    $http.get('/data/metadata.json').then((response) => {
-
 	// // 		var result = response.data;
-			
 	// // 		$scope.valueOptions = result[new];
 	// 	}
 	//     };
-		    
-
 	// );
 
 	// Initialization function
+
 	function init() {
+
+	    $scope.ontologyInfo = {};
 
 	    $scope.groupList = [];
 	    $scope.selectedGroup = null;
@@ -468,6 +538,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
     // 	    }
     // 	};
     // }])
+
     .directive('ontologyExplorer',[() => {
 	return{
 	    restrict: 'E',
@@ -478,12 +549,27 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		ontNode: '=',
 		divid: '@'
 	    },
-	    controller: ($scope) => {
+	    controller: ($scope, $http) => {
 		$('#'+$scope.divid).on('select_node.jstree', (e, data) => {
-			$scope.ontNode = data.node;
+		    $scope.ontNode = data.node;
+		    
+		    $scope.$apply();
+
+		    // // var id = data.node.iri.a_attr.replace("UBERON_(\d{1,})","UBERON:\1");
+		    // var id = data.node.a_attr.iri.split('/').slice(-1)[0];
+		    
+		    // $http.get('http://localhost:3000/ontology_info/' + id)
+		    // 	.then((response) => {
+		    // 	    $scope.ontologyInfo = response.data;
+
+		    // 	    $scope.$apply();
+		    // 	});
 			// $scope.filter_select.value = {'id': data.node.id,
-			// 			     'title': data.node.text};
-		    });
+		    // 			     'title': data.node.text};
+
+		});
+
+		
 
 		
 	    },
@@ -592,6 +678,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
     // factory for handling http requests
     .factory('httpRequests', ['$http', '$log', function($http, $log) {
 	return {
+
 	    /**  
 	     httpRequests.post
 	     url: type string
@@ -602,6 +689,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 
 	     return: void
 	     */
+
 	    post: (url, data, type) => {
 		return $http({
 		    url: url,
@@ -661,6 +749,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	    }
 	};
     }])
+
     .directive('distButton', [() => {
 	return{
 	    restrict: 'E',

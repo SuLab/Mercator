@@ -5,19 +5,28 @@ const exec = require('child_process').exec;
 const Rserve = require('rserve-js');
 const path = require('path');
 const request = require('request');
-
+const pgp = require('pg-promise')();
 
 var app = express();
-
-var jsonParser = bodyParser.json();
-var textParser = bodyParser.text();
-var rawParser = bodyParser.raw();
 
 app.use(bodyParser.json({limit: '500kb'}));
 app.use(bodyParser.text({limit: '500kb'}));
 app.use(bodyParser.raw({limit: '500kb'}));
 
 app.use(express.static('public'));
+
+var jsonParser = bodyParser.json();
+var textParser = bodyParser.text();
+var rawParser = bodyParser.raw();
+
+const genecn = {
+    host: 'localhost',
+    port: '5432',
+    database: 'mydb',
+    user: 'Jake'
+};
+
+const db = pgp(genecn);
 
 app.get('/', (req, res) =>  {
     res.sendFile(path.join(__dirname + '/index.html'));
@@ -28,6 +37,37 @@ app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
     var url = 'https://www.ebi.ac.uk/ols/api/ontologies/terms/' + req.params.resourceIRI + '/children/jstree/' + req.params.nodeID;
     req.pipe(request(url)).pipe(res);
 
+});
+
+app.get('/ontology_info/:ontTerm',(req,res) => {
+
+    var ont_id = req.params.ontTerm.replace('_',':');
+
+    db.oneOrNone('SELECT termtree FROM recount_metasra WHERE id = $1',ont_id)
+	.then((data) => {
+	    
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.termtree);
+	    }
+	    
+	});
+	    
+
+    // res.set({'Content-Type': 'application/json'});
+
+    // db.any("select * FROM gene WHERE UPPER(gene_id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(gene_symbol) LIKE UPPER('" + req.params.searchTerm + "%') LIMIT 12")
+    // 	.then((data) => {
+    // 	    res.send(data);
+    // 	})
+    // 	.catch((error) => {
+    // 	    res.send(error);
+    // 	});
 });
 
 app.post('/euclid_pca',textParser, (req, res) => {

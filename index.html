@@ -84,8 +84,10 @@
 	  <div ng-bind-html="item.title | highlight: $select.search"></div>
 	</ui-select-choices>
       </ui-select>
+
       <input id="filterSubmit" type="submit" value="Add Filter">
     </form>
+
     <div ng-repeat="x in filterList">
       <span ng-bind="x.filterLabel"></span><input type="checkbox" ng-model="x.marked"><input type="button" value="X" ng-click="removeFilter(x.id)">
     </div>

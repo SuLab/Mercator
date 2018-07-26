@@ -441,6 +441,12 @@ function setupTraceToggle(g, gd) {
             gd._legendMouseDownTime = newMouseDownTime;
         }
     });
+    traceToggle.on('mouseenter',() => {
+	alert('trace entered');
+    });
+    traceToggle.on('mouseover',() => {
+	alert('trace entered');
+    });
     traceToggle.on('mouseup', function() {
         if(gd._dragged || gd._editing) return;
         var legend = gd._fullLayout.legend;
