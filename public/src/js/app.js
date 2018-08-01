@@ -30,7 +30,9 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	    // return column key from data matrix rows 
 
 	    unpack: (rows,key) => {
-		return rows.map((row) => { return row[key]; });
+		// return Object.keys(rows).map((row) => { return rows[row][key]; });
+		return rows.filter((row) => {return typeof(row) != 'undefined';})
+		    .map((row) => { return row[key]; });
 	    },
 	    // return promise of tsne data
 
@@ -52,7 +54,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		var headers = csv.CSVtoArray(textLines[0]);
 		var deferred = $q.defer();
 
-		var lines = [];
+		var lines = {};
 		// populate array lines with hashes for rows of csv file
 		// length-1 because splitting on new line adds an empty line to the end of the file
 		for(var i=1; i < (textLines.length-1); i++){
@@ -68,7 +70,8 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		    for(var j=0; j < headers.length; j++){
 			line[headers[j]]=splitLine[j];
 		    }
-		    lines.push(line);
+		    // lines.push(line);
+		    lines[line.id] = line;
 		    // resolve on last loop iteration
 		    if(i === (textLines.length-2) && j === (headers.length)){
 			deferred.resolve(lines);
@@ -90,8 +93,8 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		    deferred.resolve([{
 			mode: 'markers',
 			name: 'test',
-			x: factory.unpack(data,'y1'),
-			y: factory.unpack(data,'y2'),
+			x: factory.unpack(Object.keys(data).map(key => data[key]),'y1'),
+			y: factory.unpack(Object.keys(data).map(key => data[key]),'y2'),
 			type: 'scattergl',
 			opacity: 1.0
 		    }]);
@@ -127,8 +130,11 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 					mode: 'markers',
 					name: traceName,
 					type: 'scattergl',
-					x: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y1'),
-					y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2'),
+					x: factory.unpack(Object.keys(data).filter((key) => {return data[key].traceName === traceName;}),'y1'),
+					y: factory.unpack(Object.keys(data).filter((key) => {return data[key].traceName === traceName;}),'y2'),
+					// x: factory.unpack(Object.keys(data).filter((key) => {return data[key].traceName === traceName;}).map((key) => {data[key];}),'y1'),
+					// y: factory.unpack(Object.keys(data).filter((key) => {return data[key].traceName === traceName;}).map((key) => {data[key];}),'y2'),
+					// y: factory.unpack(data.filter((line) => {return line.traceName === traceName;}),'y2'),
 					opacity: 1.0
 				    };
 				    resolve(trace);
@@ -146,7 +152,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
     }])
     // Controller for plotly plot
 
-    .controller('plotController',['$http', '$scope', '$log', '$q', 'plotData', function($http, $scope, $log, $q, plotData){
+    .controller('plotController',['$http', '$scope', '$log', '$q', 'plotData', '$window', function($http, $scope, $log, $q, plotData, $window){
 	var vm = this;
 
 	// vm.colorize = function() {
@@ -168,6 +174,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 	$scope.filter_select = {"field": undefined,
 				"action": undefined,
 				"value": undefined};
+
 	$scope.trace_select = {"fields": undefined};
 
 	$scope.valueOptions = [];
@@ -183,7 +190,7 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		    mode: 'markers',
 		    name: 'test',
 		    x: factory.unpack(data,'y1'),
-		    y: factory.unpack(data, 'y2'),
+		    y: factory.unpack(data,'y2'),
 		    type: 'scattergl',
 		    opacity: 0.5,
 		    marker: {color: 'rgb(128,128,128)'}
@@ -192,16 +199,23 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 
 	    else{
 		traces = [];
-		runsInTraces = [];
+		runsInTraces = new Set([]);
 		ontologyData = $scope.ontologyInfo[ontology];
+		samples = Object.keys(data);
 		let traceMaking = Object.keys(ontologyData).map(entry => {
 		    return $q((resolve,reject) => {
-			runsInTraces = runsInTraces.concat(ontologyData[entry]);
+			// runsInTraces = runsInTraces.concat(ontologyData[entry]);
+			traceLabel = entry.replace(/\+/g,'<br>');
+			runsInTraces = new Set([...runsInTraces,...ontologyData[entry]]); //runsInTraces.concat(ontologyData[entry]);
 			traces.push({
 			    mode: 'markers',
 			    type: 'scattergl',
-			    x: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y1'),
-			    y: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y2'),
+			    name: traceLabel,
+			    // x: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y1'),
+			    // x: plotData.unpack(Object.keys(data).filter((key) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y1'),
+			    x: plotData.unpack(ontologyData[entry].map((sample) => {return data[sample];}),'y1'),
+			    y: plotData.unpack(ontologyData[entry].map((sample) => {return data[sample];}),'y2'),
+			    // y: plotData.unpack(data.filter((line) => {return ontologyData[entry].indexOf(line.id) > -1;}),'y2'),
 			    opacity: 1.0
 			});
 			resolve();
@@ -210,11 +224,15 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		
 		$q.all(traceMaking)
 		    .then(() => {
+			unLabSamples = samples.filter(x => !runsInTraces.has(x));
 			traces.push({
 			    mode: 'markers',
 			    type: 'scattergl',
-			    x: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y1'),
-			    y: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y2'),
+			    name: 'unlabeled',
+			    x: plotData.unpack(unLabSamples.map((sample) => {return data[sample]; }),'y1'),
+			    y: plotData.unpack(unLabSamples.map((sample) => {return data[sample]; }),'y2'),
+			    // x: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y1'),
+			    // y: plotData.unpack(data.filter((line) => {return runsInTraces.indexOf(line.id) == -1;}),'y2'),
 			    opacity: 0.2
 			});
 			deferred.resolve(traces);
@@ -222,6 +240,10 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 
 	    }
 	    return deferred.promise;
+	};
+
+	$scope.colorOntology = function(){
+	    $scope.traces = $scope.uberonTraces;
 	};
 
 	$scope.$watch(
@@ -245,7 +267,6 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 			});
 		}
 	    });
-			     
 
 	$scope.$watch(
 	    function($scope) {
@@ -321,7 +342,6 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 
 	    };
 
-
 	    $scope.attributeOptions = [
 		{id: 'project', title: 'Data source'},
 		{id: 'tissue_general', title: 'General tissue'},
@@ -335,7 +355,6 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		{id: 'include', title: 'Only'}
 	    ];
 
-
 	    plotData.getData()
 		.then(plotData.processData)
 		.then((data) => {
@@ -345,9 +364,10 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		})
 		.then((traces) => {
 		    $scope.layout = {
-			height: '100%',
-			width: '100%',
+			height: $window.innerHeight,
+			width: $window.innerWidth,
 			title: 'Tsne test!'
+			
 		    };
 		    $scope.traces = traces;
 		    $scope.buildTraces=plotData.buildTraces;
@@ -375,7 +395,6 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
     	return{
 	    restrict: 'A',
 	    controller: ['$scope', 'plotData', ($scope, plotData) => {
-
 		
 		$scope.filterData = () => {
 
@@ -410,10 +429,12 @@ angular.module("mercatorApp",['plotly','ui.select','ngSanitize','olsAutocomplete
 		    $scope.filteredData = reducedFilters.reduce((currData,filterEntry) => {
 			cnt++;
 			if(filterEntry.action === "exclude"){
-			    return currData.filter((dataEntry) => {return !filterEntry.value.includes(dataEntry[filterEntry.field]); });
+			    // return currData.filter((dataEntry) => {return !filterEntry.value.includes(dataEntry[filterEntry.field]); });
+			    return Object.keys(currData).filter((dataEntry) => {return !filterEntry.value.includes(currData[dataEntry][filterEntry.field]); }).map((key) => {return currData[key]; });
 			}
 			else if(filterEntry.action === "include"){
-			    return currData.filter((dataEntry) => {return filterEntry.value.includes(dataEntry[filterEntry.field]); });
+			    return Object.keys(currData).filter((dataEntry) => {return filterEntry.value.includes(currData[dataEntry][filterEntry.field]); }).map((key) => {return currData[key]; });			    
+			    // return currData.filter((dataEntry) => {return filterEntry.value.includes(dataEntry[filterEntry.field]); });
 			}
 			else{
 			    return currData;
