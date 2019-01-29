@@ -39,11 +39,60 @@ app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
 
 });
 
+app.get('/uberon_search/:searchTerm',(req,res) => {
+
+    res.set({'Content-Type': 'application/json'});
+
+    db.any("SELECT id,name FROM recount_metasra WHERE id LIKE 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
+    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
+	.then((data) => {
+	    res.send(data);
+	})
+	.catch((error) => {
+	    res.send(error);
+	});
+});
+
+app.get('/doid_search/:searchTerm',(req,res) => {
+
+    res.set({'Content-Type': 'application/json'});
+
+    db.any("SELECT id,name FROM recount_metasra WHERE id LIKE 'DOID%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
+    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
+	.then((data) => {
+	    res.send(data);
+	})
+	.catch((error) => {
+	    res.send(error);
+	});
+});
+
+
+app.get('/gene_vals/:gene_id',(req,res) => {
+
+    db.one('SELECT vals FROM gene_vals WHERE gene_id = $1',req.params.gene_id)
+
+	.then((data) => {
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.vals);
+	    }
+	});
+});
+	
+
 app.get('/ontology_info/:ontTerm',(req,res) => {
 
-    var ont_id = req.params.ontTerm.replace('_',':');
+    // var ont_id = req.params.ontTerm.replace('_','');
 
-    db.oneOrNone('SELECT termtree FROM recount_metasra WHERE id = $1',ont_id)
+
+
+    db.oneOrNone("SELECT termtree FROM recount_metasra WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 	    
 	    res.set({
@@ -57,7 +106,6 @@ app.get('/ontology_info/:ontTerm',(req,res) => {
 	    }
 	    
 	});
-	    
 
     // res.set({'Content-Type': 'application/json'});
 
@@ -113,8 +161,42 @@ app.post('/euclid_pca',textParser, (req, res) => {
     });
 });
 
+app.get('/mesh_tree/:id',(req,res) => {
+
+    res.set({'Content-Type': 'application/json'});
+
+    // db.one("SELECT children FROM mesh_tree WHERE " + req.params.id + " LIKE id")
+    db.one("SELECT children FROM mesh_tree WHERE id = $1",req.params.id)
+	   // 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
+    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
+	.then((data) => {
+	    res.send(data);
+	})
+	.catch((error) => {
+	    res.send(error);
+	});
+});
+
+app.get('/doid_tree/:id',(req, res) => {
+    res.set({'Content-Type': 'application/json'});
+
+    // db.one("SELECT children FROM mesh_tree WHERE " + req.params.id + " LIKE id")
+    db.one("SELECT children FROM doid_tree WHERE id = $1",req.params.id)
+	   // 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
+    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
+	.then((data) => {
+	    res.send(data);
+	})
+	.catch((error) => {
+	    res.send(error);
+	});
+});
+
+
 const server = app.listen(3000,function () {
     console.log('Example app listening on port 3000');
 });
+
+
 
 server.timeout = 360000;

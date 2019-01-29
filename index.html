@@ -9,19 +9,44 @@
     <!-- <script src="src/js/selectize.min.js"></script> -->
     <!-- <link rel="stylesheet" type="text/css" href="bower_components/selectize/dist/css/selectize.css"/> -->
     <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
-    <script src="bower_components/plotly.js/dist/plotly.modified.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-1.33.0.min.js"></script>
+    <!-- <script src="bower_components/plotly.js/dist/plotly.modified.min.js"></script> -->
     <script src="bower_components/angular-plotly/src/angular-plotly.js"></script>
+    <script src="//angular-ui.github.io/bootstrap/ui-bootstrap-tpls-2.5.0.js"></script>    
     <script src="node_modules/ui-select/dist/select.min.js"></script>
     <script src="node_modules/ols-autocomplete/build/ols-autocomplete.js"></script>
+    <script src="https://unpkg.com/ng-table@2.0.2/bundles/ng-table.min.js"></script>    
     <!-- <script src="node_modules/ols-treeview/build/ols-treeview.min.js"></script> -->
     <script src="src/js/app.js"></script>
     <link rel="stylesheet" type="text/css" href="node_modules/ui-select/dist/select.css"/>
-    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.css">
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet"; href="https://unpkg.com/ng-table@2.0.2/bundles/ng-table.min.css">
+    <link rel="stylesheet" href="node_modules/angular-ui-bootstrap/dist/ui-bootstrap-csp.css">
+    <!-- <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <script type="text/ng-template" id="customGeneTemplate.html">
+      <!-- <script src="bower_components/angular/angular.min.js"></script>     -->
+      <a>
+	<span ng-bind-html="match.model.id | uibTypeaheadHighlight:query"></span>, 
+	<span ng-bind-html="match.model.symbol+match.model.markerStr | uibTypeaheadHighlight:query"></span>
+	<!-- <span ng-bind-html="match.model.markerStr"></span> -->
+      </a>
+    </script>
+    <script type="text/ng-template" id="customOntTemplate.html">
+      <a>
+	<span ng-bind-html="match.model.id | uibTypeaheadHighlight:query"></span>, 
+	<span ng-bind-html="match.model.name | uibTypeaheadHighlight:query"></span>
+      </a>
+    </script>
+    <style>
+      .selected {
+      outline: 2px solid blue;
+      }
+    </style>
   </head>
   <body id="top" ng-controller="plotController as ctrl">
     <div>
-      <plotly plotly-data="traces" plotly-layout="layout" plotly-options="options" plotly-events="plotlyEvents"></plotly>
+      <plotly plotly-data="tsneTraces" plotly-layout="tsneLayout" plotly-options="tsneOptions" plotly-events="tsneEvents"></plotly>
     </div>
     <div class="demo">
       <h2>Color selection</h2>
@@ -63,6 +88,28 @@
     <!-- </form> -->
 
 
+
+    <h4>tSNE Controls</h4>
+    Color Values: </br>
+    <div class="btn-group">
+      <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'metadata'">Metadata</label>
+      <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'mesh'">Mesh</label>
+      <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'doid'">Doid</label>
+      <!-- <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'cluster'">Cluster</label> -->
+      <!-- <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'gene'">Gene Values</label> -->
+      <label class="btn btn-primary" ng-model="tsneColor" uib-btn-radio="'samp-dist'">Sample Distance</label>
+    </div>
+    </br>
+    Data Controls:
+    </br>
+    <div class="btn-group">
+      <label class="btn btn-primary" ng-model="tsneData" uib-btn-radio="'all'">All Data</label>
+      <label class="btn btn-primary" ng-model="tsneData" uib-btn-radio="'filtered'">Filtered Data</label>
+    </div>
+    </br>
+    <button id="tsneUpdate" type="button" class="btn btn-primary" ng-click="tsneClick()" ng-disabled="tsneDisabled">{{ tsne_status }}</button>
+    </br>
+
     <form filter-input ng-submit="addFilter()" id="filterForm">
       <ui-select ng-model="filter_select.field" theme="bootstrap" style="max-width: 140px;" title="Choose an attribute">
 	<ui-select-match placeholder="Field">{{$select.selected.title}}</ui-select-match>
@@ -96,6 +143,29 @@
     </br>
     
     <input type="button" value="Color by Ontology" ng-click="colorOntology()">
-    <ontology-explorer id="uberon-explorer" data-ont-node="uberon_selection" data-ont="uberon" data-divid="uberon-explorer"></ontology-explorer>
+
+    </br>
+    </br>
+
+    <input type="text" size="25" ng-model="doidSearchSelected" placeholder="Search DOID by ID or name" uib-typeahead="term as term.name for term in getDoidTerms($viewValue)" typeahead-loading="loadingDoid" typeahead-no-results="noResults" typeahead-min-length="3" typeahead-template-url="customOntTemplate.html" typeahead-on-select="selectDoidTerm($item,$model,$label)">
+    <i ng-show"loadingDoid" class="glyphicon glyphicon-refresh"></i>
+    <div ng-show="noResults">
+      <i class="glyphicon glyphicon-remove"></i> No results found
+    </div>
+
+    </br>
+    <input type="text" size="25" ng-model="uberonSearchSelected" placeholder="Search UBERON by ID or name" uib-typeahead="term as term.name for term in getUberonTerms($viewValue)" typeahead-loading="loadingUberon" typeahead-no-results="noResults" typeahead-min-length="3" typeahead-template-url="customOntTemplate.html" typeahead-on-select="selectUberonTerm($item,$model,$label)">
+    <i ng-show"loadingUberon" class="glyphicon glyphicon-refresh"></i>
+    <div ng-show="noResults">
+      <i class="glyphicon glyphicon-remove"></i> No results found
+    </div>
+    </br>
+    
+    <ontology-explorer id="doid-explorer" data-ont-node="doid_selection" data-ont="doid" data-divid="doid-explorer"></ontology-explorer>
+
+    <mesh-explorer id="mesh-explorer" data-ont-node="mesh_selection" data-divid="mesh-explorer"></mesh-explorer>
+
+
+    
   </body>
 </html>
