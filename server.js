@@ -10,7 +10,7 @@ const pgp = require('pg-promise')();
 var app = express();
 
 app.use(bodyParser.json({limit: '500kb'}));
-app.use(bodyParser.text({limit: '500kb'}));
+app.use(bodyParser.text({limit: '10mb'}));
 app.use(bodyParser.raw({limit: '500kb'}));
 
 app.use(express.static('public'));
@@ -86,6 +86,41 @@ app.get('/gene_vals/:gene_id',(req,res) => {
 });
 	
 
+app.get('/tissue_info/:ontTerm',(req,res) => {
+
+    db.oneOrNone("SELECT children FROM tissue_tree WHERE id = $1",req.params.ontTerm)
+	.then((data) => {
+
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.children);
+	    }
+	});
+});
+
+app.get('/doid_info/:ontTerm',(req,res) => {
+
+    db.oneOrNone("SELECT termtree FROM doid_table WHERE id = $1",req.params.ontTerm)
+	.then((data) => {
+
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.termtree);
+	    }
+	});
+});
+
+
 app.get('/ontology_info/:ontTerm',(req,res) => {
 
     // var ont_id = req.params.ontTerm.replace('_','');
@@ -119,9 +154,13 @@ app.get('/ontology_info/:ontTerm',(req,res) => {
 });
 
 app.post('/euclid_pca',textParser, (req, res) => {
+    console.log('fired');
+
     if(!req.body) {res.sendStatus(400); return;};
 
     var num = Math.floor(Math.random()*8192);
+    
+    
 
     fs.writeFile("private/tmp/incoming/entry_"+num+".tsv",req.body,(err) => {
 	if(err) {
@@ -143,7 +182,10 @@ app.post('/euclid_pca',textParser, (req, res) => {
 	    res.set({
 	    	'Content-Type': 'text/plain'});
 
+	    // res.sendFile('entry_'+'0000'+'.tsv',{ root: path.join(__dirname+'/private/tmp/outgoing/')},function(err){
 	    res.sendFile('entry_'+num+'.tsv',{ root: path.join(__dirname+'/private/tmp/outgoing/')},function(err){
+
+
 	    	if(err) {
 		    console.error(`exec error: ${err}`);
 	    	    res.send(error);
