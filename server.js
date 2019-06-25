@@ -13,24 +13,19 @@ app.use(bodyParser.json({limit: '500kb'}));
 app.use(bodyParser.text({limit: '10mb'}));
 app.use(bodyParser.raw({limit: '500kb'}));
 
-app.use(express.static('public'));
-
 var jsonParser = bodyParser.json();
 var textParser = bodyParser.text();
 var rawParser = bodyParser.raw();
 
 const genecn = {
-    host: 'localhost',
+    host: 'mercator-db.c4j6ydys0c7w.us-west-2.rds.amazonaws.com',
     port: '5432',
-    database: 'mydb',
-    user: 'Jake'
+    database: 'mercatordb',
+    user: 'mercator_user',
+    password: 'xXx'
 };
 
 const db = pgp(genecn);
-
-app.get('/', (req, res) =>  {
-    res.sendFile(path.join(__dirname + '/index.html'));
-});
 
 app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
 
@@ -38,35 +33,6 @@ app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
     req.pipe(request(url)).pipe(res);
 
 });
-
-app.get('/uberon_search/:searchTerm',(req,res) => {
-
-    res.set({'Content-Type': 'application/json'});
-
-    db.any("SELECT id,name FROM recount_metasra WHERE id LIKE 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
-    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
-	.then((data) => {
-	    res.send(data);
-	})
-	.catch((error) => {
-	    res.send(error);
-	});
-});
-
-app.get('/doid_search/:searchTerm',(req,res) => {
-
-    res.set({'Content-Type': 'application/json'});
-
-    db.any("SELECT id,name FROM recount_metasra WHERE id LIKE 'DOID%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
-    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
-	.then((data) => {
-	    res.send(data);
-	})
-	.catch((error) => {
-	    res.send(error);
-	});
-});
-
 
 app.get('/gene_vals/:gene_id',(req,res) => {
 
@@ -120,13 +86,24 @@ app.get('/doid_info/:ontTerm',(req,res) => {
 	});
 });
 
+app.get('/efo_info/:ontTerm',(req,res) => {
+
+    db.oneOrNone("SELECT termtree FROM efo_table WHERE id = $1",req.params.ontTerm)
+	.then((data) => {
+
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.termtree);
+	    }
+	});
+});
 
 app.get('/ontology_info/:ontTerm',(req,res) => {
-
-    // var ont_id = req.params.ontTerm.replace('_','');
-
-
-
     db.oneOrNone("SELECT termtree FROM recount_metasra WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 	    
@@ -142,97 +119,10 @@ app.get('/ontology_info/:ontTerm',(req,res) => {
 	    
 	});
 
-    // res.set({'Content-Type': 'application/json'});
-
-    // db.any("select * FROM gene WHERE UPPER(gene_id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(gene_symbol) LIKE UPPER('" + req.params.searchTerm + "%') LIMIT 12")
-    // 	.then((data) => {
-    // 	    res.send(data);
-    // 	})
-    // 	.catch((error) => {
-    // 	    res.send(error);
-    // 	});
 });
 
-app.post('/euclid_pca',textParser, (req, res) => {
-    console.log('fired');
-
-    if(!req.body) {res.sendStatus(400); return;};
-
-    var num = Math.floor(Math.random()*8192);
-    
-    
-
-    fs.writeFile("private/tmp/incoming/entry_"+num+".tsv",req.body,(err) => {
-	if(err) {
-	    console.log(err);
-	    return;
-	}
-
-	console.log('Data written to private/tmp/incoming/entry_'+num+'.tsv');
-
-	exec('echo ' + num + ' | Rscript public/src/R/euclidian_pca_distance.R', (error, stdout, stderr) => {
-    	    if (error) {
-    		console.error(`exec error: ${error}`);
-    		res.send(error);
-    		return;
-    	    }
-    	    console.log(`stdout: ${stdout}`);
-    	    console.log(`stderr: ${stderr}`);
-
-	    res.set({
-	    	'Content-Type': 'text/plain'});
-
-	    // res.sendFile('entry_'+'0000'+'.tsv',{ root: path.join(__dirname+'/private/tmp/outgoing/')},function(err){
-	    res.sendFile('entry_'+num+'.tsv',{ root: path.join(__dirname+'/private/tmp/outgoing/')},function(err){
 
 
-	    	if(err) {
-		    console.error(`exec error: ${err}`);
-	    	    res.send(error);
-	    	    return;
-	    	}
-	    	else{
-		    console.log('file sent');
-	    	    return;
-	    	}
-	    });
-	    
-	    return;
-	});
-	return;
-    });
-});
-
-app.get('/mesh_tree/:id',(req,res) => {
-
-    res.set({'Content-Type': 'application/json'});
-
-    // db.one("SELECT children FROM mesh_tree WHERE " + req.params.id + " LIKE id")
-    db.one("SELECT children FROM mesh_tree WHERE id = $1",req.params.id)
-	   // 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
-    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
-	.then((data) => {
-	    res.send(data);
-	})
-	.catch((error) => {
-	    res.send(error);
-	});
-});
-
-app.get('/doid_tree/:id',(req, res) => {
-    res.set({'Content-Type': 'application/json'});
-
-    // db.one("SELECT children FROM mesh_tree WHERE " + req.params.id + " LIKE id")
-    db.one("SELECT children FROM doid_tree WHERE id = $1",req.params.id)
-	   // 'UBERON%' AND (UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') OR UPPER(id) LIKE UPPER('%" + req.params.searchTerm + "%')) LIMIT 12")
-    //db.any("SELECT id,name FROM recount_metasra WHERE UPPER(id) LIKE UPPER('" + req.params.searchTerm + "%') OR UPPER(name) LIKE UPPER('%" + req.params.searchTerm + "%') LIMIT 12") 
-	.then((data) => {
-	    res.send(data);
-	})
-	.catch((error) => {
-	    res.send(error);
-	});
-});
 
 
 const server = app.listen(3000,function () {
