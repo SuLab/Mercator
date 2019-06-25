@@ -71,7 +71,7 @@ app.get('/tissue_info/:ontTerm',(req,res) => {
 
 app.get('/doid_info/:ontTerm',(req,res) => {
 
-    db.oneOrNone("SELECT termtree FROM doid_table WHERE id = $1",req.params.ontTerm)
+    db.oneOrNone("SELECT termtree FROM doid_dat WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 
 	    res.set({
@@ -88,7 +88,7 @@ app.get('/doid_info/:ontTerm',(req,res) => {
 
 app.get('/efo_info/:ontTerm',(req,res) => {
 
-    db.oneOrNone("SELECT termtree FROM efo_table WHERE id = $1",req.params.ontTerm)
+    db.oneOrNone("SELECT termtree FROM efo_tree WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 
 	    res.set({
@@ -104,7 +104,7 @@ app.get('/efo_info/:ontTerm',(req,res) => {
 });
 
 app.get('/ontology_info/:ontTerm',(req,res) => {
-    db.oneOrNone("SELECT termtree FROM recount_metasra WHERE id = $1",req.params.ontTerm)
+    db.oneOrNone("SELECT termtree FROM mesh_tree WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 	    
 	    res.set({
@@ -132,3 +132,4 @@ const server = app.listen(3000,function () {
 
 
 server.timeout = 360000;
+n
