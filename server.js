@@ -22,7 +22,7 @@ const genecn = {
     port: '5432',
     database: 'mercatordb',
     user: 'mercator_user',
-    password: 'xXx'
+    password: 'foo'
 };
 
 const db = pgp(genecn);
@@ -54,7 +54,7 @@ app.get('/gene_vals/:gene_id',(req,res) => {
 
 app.get('/tissue_info/:ontTerm',(req,res) => {
 
-    db.oneOrNone("SELECT children FROM tissue_tree WHERE id = $1",req.params.ontTerm)
+    db.oneOrNone("SELECT termTree FROM tissue_tree WHERE id = $1",req.params.ontTerm)
 	.then((data) => {
 
 	    res.set({
@@ -64,7 +64,7 @@ app.get('/tissue_info/:ontTerm',(req,res) => {
 		res.send({});
 	    }
 	    else{
-		res.send(data.children);
+		res.send(data.termtree);
 	    }
 	});
 });
