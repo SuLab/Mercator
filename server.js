@@ -17,13 +17,7 @@ var jsonParser = bodyParser.json();
 var textParser = bodyParser.text();
 var rawParser = bodyParser.raw();
 
-const genecn = {
-    host: 'mercator-db.c4j6ydys0c7w.us-west-2.rds.amazonaws.com',
-    port: '5432',
-    database: 'mercatordb',
-    user: 'mercator_user',
-    password: 'foo'
-};
+genecn = JSON.parse(fs.readFileSync('db_con.json'));
 
 const db = pgp(genecn);
 
