@@ -28,6 +28,24 @@ app.get('/ols/:resourceIRI/:nodeID',(req, res) => {
 
 });
 
+app.get('/pairwise_markers/:clus_id',(req,res) => {
+
+    db.one('SELECT gene_table FROM pairwise_markers WHERE pair_id = $1',req.params.clus_id)
+
+	.then((data) => {
+	    res.set({
+		'Content-Type': 'application/json'});
+
+	    if(!data){
+		res.send({});
+	    }
+	    else{
+		res.send(data.gene_table);
+	    }
+	});
+});
+		   
+
 app.get('/gene_vals/:gene_id',(req,res) => {
 
     db.one('SELECT vals FROM gene_vals WHERE gene_id = $1',req.params.gene_id)
@@ -114,10 +132,6 @@ app.get('/ontology_info/:ontTerm',(req,res) => {
 	});
 
 });
-
-
-
-
 
 const server = app.listen(3000,function () {
     console.log('Example app listening on port 3000');
